@@ -1,0 +1,810 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Design Thinking for Devs · Reference</title>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,500;0,9..144,700;1,9..144,300;1,9..144,500&family=Fira+Code:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #16120e;
+    --surface: #1e1812;
+    --surface2: #261e16;
+    --border: #2e2418;
+    --border2: #3a2e20;
+    --ink: #ede5d8;
+    --ink2: #c4b89e;
+    --muted: #7a6a52;
+    --accent: #e8824a;   /* warm orange */
+    --accent2: #d4a843;  /* amber */
+    --accent3: #7ec8a4;  /* sage */
+    --accent4: #c87878;  /* muted red */
+    --rule: #2e2418;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: 'Fraunces', serif;
+    font-size: 18px;
+    line-height: 1.75;
+  }
+
+  /* Warm noise texture */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: 100;
+  }
+
+  .page {
+    max-width: 820px;
+    margin: 0 auto;
+    padding: 0 2rem;
+  }
+
+  /* ── Running header ── */
+  .rh {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1.2rem 0 0.9rem;
+    border-bottom: 1px solid var(--border2);
+    position: sticky;
+    top: 0;
+    background: var(--bg);
+    z-index: 50;
+    gap: 1rem;
+    flex-wrap: wrap;
+  }
+
+  .rh-left {
+    font-family: 'Fira Code', monospace;
+    font-size: 0.62rem;
+    color: var(--muted);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+
+  .rh-right {
+    display: flex;
+    gap: 1.5rem;
+  }
+
+  .rh-right a {
+    font-family: 'Fira Code', monospace;
+    font-size: 0.6rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--muted);
+    text-decoration: none;
+    transition: color 0.15s;
+  }
+  .rh-right a:hover { color: var(--accent); }
+
+  /* ── Hero ── */
+  .hero {
+    padding: 5.5rem 0 4rem;
+    border-bottom: 1px solid var(--rule);
+    opacity: 0;
+    animation: up 0.7s ease 0.05s forwards;
+  }
+
+  .hero-label {
+    font-family: 'Fira Code', monospace;
+    font-size: 0.65rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 1.5rem;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+  }
+  .hero-label::before {
+    content: '';
+    width: 1.5rem;
+    height: 1px;
+    background: var(--accent);
+  }
+
+  h1 {
+    font-size: clamp(2.6rem, 7vw, 4.5rem);
+    font-weight: 300;
+    line-height: 1.05;
+    letter-spacing: -0.025em;
+    margin-bottom: 1.5rem;
+    color: var(--ink);
+  }
+
+  h1 em {
+    font-style: italic;
+    color: var(--accent);
+    font-weight: 300;
+  }
+
+  .hero-sub {
+    font-size: 1.05rem;
+    color: var(--ink2);
+    font-weight: 300;
+    max-width: 560px;
+    line-height: 1.65;
+    margin-bottom: 2.5rem;
+  }
+
+  /* terminal quote */
+  .term-quote {
+    background: var(--surface);
+    border: 1px solid var(--border2);
+    border-left: 3px solid var(--accent);
+    border-radius: 4px;
+    padding: 1rem 1.25rem;
+    font-family: 'Fira Code', monospace;
+    font-size: 0.8rem;
+    color: var(--ink2);
+    line-height: 1.6;
+    display: inline-block;
+  }
+  .term-quote .prompt { color: var(--accent3); }
+  .term-quote .cmd    { color: var(--ink); }
+  .term-quote .out    { color: var(--muted); display: block; margin-top: 0.25rem; }
+
+  /* ── Section ── */
+  .section {
+    padding: 3.5rem 0;
+    border-bottom: 1px solid var(--rule);
+    opacity: 0;
+    animation: up 0.6s ease forwards;
+  }
+
+  .sec-num {
+    font-family: 'Fira Code', monospace;
+    font-size: 0.6rem;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 0.3rem;
+  }
+
+  h2 {
+    font-size: 1.8rem;
+    font-weight: 500;
+    letter-spacing: -0.02em;
+    color: var(--ink);
+    margin-bottom: 1.5rem;
+    line-height: 1.2;
+  }
+
+  h3 {
+    font-size: 1.1rem;
+    font-weight: 500;
+    color: var(--ink);
+    margin: 2.25rem 0 0.65rem;
+    letter-spacing: -0.01em;
+  }
+
+  p {
+    color: var(--ink2);
+    margin-bottom: 1rem;
+    font-weight: 300;
+  }
+
+  p strong { color: var(--ink); font-weight: 500; }
+
+  /* ── Callouts ── */
+  .callout {
+    border: 1px solid var(--border2);
+    border-left: 3px solid var(--accent);
+    background: var(--surface);
+    border-radius: 4px;
+    padding: 1.1rem 1.25rem;
+    margin: 1.5rem 0;
+    font-size: 0.95rem;
+    color: var(--ink2);
+  }
+  .callout.amber { border-left-color: var(--accent2); }
+  .callout.sage  { border-left-color: var(--accent3); }
+  .callout.red   { border-left-color: var(--accent4); }
+
+  .callout-label {
+    font-family: 'Fira Code', monospace;
+    font-size: 0.6rem;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    margin-bottom: 0.4rem;
+    color: var(--accent);
+    display: block;
+  }
+  .callout.amber .callout-label { color: var(--accent2); }
+  .callout.sage  .callout-label { color: var(--accent3); }
+  .callout.red   .callout-label { color: var(--accent4); }
+
+  /* ── Diff block ── */
+  .diff {
+    background: var(--surface);
+    border: 1px solid var(--border2);
+    border-radius: 4px;
+    overflow: hidden;
+    margin: 1.5rem 0;
+    font-family: 'Fira Code', monospace;
+    font-size: 0.78rem;
+    line-height: 1.7;
+  }
+
+  .diff-header {
+    padding: 0.45rem 1rem;
+    background: var(--surface2);
+    border-bottom: 1px solid var(--border2);
+    font-size: 0.62rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--muted);
+    display: flex;
+    justify-content: space-between;
+  }
+
+  .diff-body {
+    padding: 0.75rem 0;
+  }
+
+  .diff-line {
+    padding: 0.05rem 1rem;
+    display: block;
+  }
+
+  .diff-line.del {
+    background: rgba(200,120,120,0.08);
+    color: var(--accent4);
+  }
+  .diff-line.del::before { content: '- '; opacity: 0.6; }
+
+  .diff-line.add {
+    background: rgba(126,200,164,0.08);
+    color: var(--accent3);
+  }
+  .diff-line.add::before { content: '+ '; opacity: 0.6; }
+
+  .diff-line.ctx { color: var(--muted); }
+  .diff-line.ctx::before { content: '  '; }
+
+  /* ── Anti-pattern cards ── */
+  .antipatterns {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.75rem;
+    margin: 1.5rem 0;
+  }
+  @media (max-width: 600px) { .antipatterns { grid-template-columns: 1fr; } }
+
+  .ap-card {
+    border: 1px solid var(--border2);
+    border-radius: 4px;
+    background: var(--surface);
+    overflow: hidden;
+  }
+
+  .ap-header {
+    padding: 0.7rem 1rem;
+    background: var(--surface2);
+    border-bottom: 1px solid var(--border2);
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+  }
+
+  .ap-icon {
+    font-size: 0.75rem;
+    font-family: 'Fira Code', monospace;
+    padding: 0.1rem 0.4rem;
+    border-radius: 2px;
+    background: rgba(200,120,120,0.15);
+    color: var(--accent4);
+  }
+
+  .ap-name {
+    font-family: 'Fira Code', monospace;
+    font-size: 0.72rem;
+    color: var(--ink2);
+    font-weight: 500;
+  }
+
+  .ap-body {
+    padding: 0.85rem 1rem;
+    font-size: 0.88rem;
+    color: var(--muted);
+    line-height: 1.55;
+  }
+
+  .ap-body strong { color: var(--ink2); font-weight: 500; }
+
+  .ap-fix {
+    padding: 0.5rem 1rem 0.85rem;
+    font-family: 'Fira Code', monospace;
+    font-size: 0.7rem;
+    color: var(--accent3);
+    border-top: 1px solid var(--border);
+  }
+  .ap-fix::before { content: '// fix: '; color: var(--muted); }
+
+  /* ── Observation log ── */
+  .obs-log {
+    background: var(--surface);
+    border: 1px solid var(--border2);
+    border-radius: 4px;
+    overflow: hidden;
+    margin: 1.5rem 0;
+  }
+
+  .obs-log-header {
+    padding: 0.5rem 1rem;
+    background: var(--surface2);
+    border-bottom: 1px solid var(--border2);
+    font-family: 'Fira Code', monospace;
+    font-size: 0.62rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--muted);
+    display: flex;
+    justify-content: space-between;
+  }
+
+  .obs-entry {
+    display: grid;
+    grid-template-columns: 140px 1fr 1fr;
+    border-bottom: 1px solid var(--border);
+    font-family: 'Fira Code', monospace;
+    font-size: 0.75rem;
+    line-height: 1.6;
+  }
+  .obs-entry:last-child { border-bottom: none; }
+
+  @media (max-width: 650px) {
+    .obs-entry { grid-template-columns: 1fr; }
+    .obs-entry > div { border-bottom: 1px solid var(--border); }
+    .obs-entry > div:last-child { border-bottom: none; }
+  }
+
+  .obs-behaviour {
+    padding: 0.7rem 1rem;
+    color: var(--accent2);
+    border-right: 1px solid var(--border);
+  }
+
+  .obs-assumption {
+    padding: 0.7rem 1rem;
+    color: var(--accent4);
+    border-right: 1px solid var(--border);
+    font-style: italic;
+  }
+
+  .obs-signal {
+    padding: 0.7rem 1rem;
+    color: var(--accent3);
+  }
+
+  /* ── Practice checklist ── */
+  .checklist {
+    list-style: none;
+    margin: 1.25rem 0;
+  }
+
+  .checklist li {
+    display: flex;
+    gap: 0.75rem;
+    align-items: flex-start;
+    padding: 0.5rem 0;
+    border-bottom: 1px solid var(--border);
+    font-size: 0.95rem;
+    color: var(--ink2);
+    font-weight: 300;
+  }
+  .checklist li:last-child { border-bottom: none; }
+
+  .check-box {
+    font-family: 'Fira Code', monospace;
+    font-size: 0.7rem;
+    color: var(--muted);
+    border: 1px solid var(--border2);
+    border-radius: 2px;
+    padding: 0.1rem 0.3rem;
+    margin-top: 0.25rem;
+    flex-shrink: 0;
+  }
+
+  /* ── Definition card ── */
+  .definition {
+    border: 1px solid var(--accent);
+    border-radius: 4px;
+    padding: 1.75rem;
+    margin: 2rem 0;
+    background: rgba(232,130,74,0.04);
+    position: relative;
+  }
+
+  .definition::before {
+    content: 'def';
+    position: absolute;
+    top: -0.7rem;
+    left: 1rem;
+    font-family: 'Fira Code', monospace;
+    font-size: 0.65rem;
+    background: var(--bg);
+    padding: 0 0.4rem;
+    color: var(--accent);
+    letter-spacing: 0.1em;
+  }
+
+  .definition p {
+    font-size: 1.1rem;
+    color: var(--ink);
+    margin: 0;
+    font-style: italic;
+    line-height: 1.6;
+    font-weight: 300;
+  }
+
+  .definition p strong { font-style: normal; }
+
+  /* ── Back + footer ── */
+  .back-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-family: 'Fira Code', monospace;
+    font-size: 0.65rem;
+    letter-spacing: 0.08em;
+    color: var(--muted);
+    text-decoration: none;
+    padding: 1.5rem 0;
+    transition: color 0.15s;
+  }
+  .back-link:hover { color: var(--accent); }
+
+  footer {
+    border-top: 1px solid var(--rule);
+    padding: 2rem 0;
+    display: flex;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    font-family: 'Fira Code', monospace;
+    font-size: 0.62rem;
+    color: var(--muted);
+    letter-spacing: 0.05em;
+  }
+
+  /* ── Animations ── */
+  @keyframes up {
+    from { opacity: 0; transform: translateY(14px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  .s1 { animation-delay: 0.1s; }
+  .s2 { animation-delay: 0.18s; }
+  .s3 { animation-delay: 0.26s; }
+  .s4 { animation-delay: 0.34s; }
+  .s5 { animation-delay: 0.42s; }
+  .s6 { animation-delay: 0.50s; }
+</style>
+</head>
+<body>
+
+<div class="page">
+
+  <!-- Running header -->
+  <div class="rh">
+    <span class="rh-left">Design Thinking · Dev Edition</span>
+    <nav class="rh-right">
+      <a href="#mental-model">Mental Model</a>
+      <a href="#unlearn">Unlearn</a>
+      <a href="#observe">Observe</a>
+      <a href="#practice">Practice</a>
+      <a href="index.html">← Home</a>
+    </nav>
+  </div>
+
+  <!-- Hero -->
+  <header class="hero">
+    <div class="hero-label">Product thinking · UX · Observation</div>
+    <h1>Design Thinking<br><em>isn't a framework.</em></h1>
+    <p class="hero-sub">
+      Every developer eventually hits the wall: technically correct code, logically sound feature,
+      and users still don't get it. Design thinking is the discipline that explains why —
+      and it has nothing to do with aesthetics.
+    </p>
+    <div class="term-quote">
+      <span class="prompt">$ </span><span class="cmd">git blame user_confusion.txt</span>
+      <span class="out">// most lines: authored by unchallenged assumptions</span>
+    </div>
+  </header>
+
+  <!-- §1 Mental model -->
+  <section class="section s1" id="mental-model">
+    <div class="sec-num">§ 01</div>
+    <h2>The mental model most devs start with is wrong</h2>
+
+    <p>
+      The instinct when learning design thinking is to treat it like an API: learn the interface,
+      call the methods, get output. Empathy map → Affinity diagram → How Might We → Prototype.
+      Check, check, check.
+    </p>
+
+    <p>
+      That's not what it is. Running the steps without the underlying shift is like copy-pasting
+      code you don't understand. It compiles. It doesn't work.
+    </p>
+
+    <div class="diff">
+      <div class="diff-header">
+        <span>mental_model.diff</span>
+        <span>what to replace</span>
+      </div>
+      <div class="diff-body">
+        <span class="diff-line ctx">// Design thinking is...</span>
+        <span class="diff-line del">a 5-step process to generate creative solutions</span>
+        <span class="diff-line del">a brainstorming technique for product teams</span>
+        <span class="diff-line del">a shortcut to validated ideas</span>
+        <span class="diff-line del">something designers do, not engineers</span>
+        <span class="diff-line add">a discipline for replacing assumptions with observed behaviour</span>
+        <span class="diff-line add">a method for deciding what's worth building at all</span>
+        <span class="diff-line add">something that makes your code solve the right problem</span>
+        <span class="diff-line add">slow by design — speed comes later, after certainty</span>
+      </div>
+    </div>
+
+    <p>
+      At its core, design thinking is one repeated act: <strong>watching what real people actually do
+      until your assumptions about them start breaking.</strong> The frameworks are just scaffolding
+      for that act.
+    </p>
+
+    <div class="callout amber">
+      <span class="callout-label">analogy</span>
+      Think of it like debugging a race condition. You don't fix it by reading the code harder.
+      You instrument, observe real execution, and wait for the assumption you got wrong to surface.
+      Design thinking is the same discipline applied to human behaviour instead of thread state.
+    </div>
+
+    <h3>The real output</h3>
+    <p>
+      Most people expect design thinking to output <em>solutions</em>. It doesn't — not directly.
+      Its output is <strong>better-formed problems</strong>. A well-formed problem is worth 10x more
+      than a solution to a poorly understood one. This is where the ROI actually lives.
+    </p>
+  </section>
+
+  <!-- §2 What to unlearn -->
+  <section class="section s2" id="unlearn">
+    <div class="sec-num">§ 02</div>
+    <h2>Four bugs in developer thinking about users</h2>
+
+    <p>
+      These aren't personality flaws — they're patterns that emerge naturally from how engineers
+      are trained to think. Spotting them in yourself is most of the work.
+    </p>
+
+    <div class="antipatterns">
+
+      <div class="ap-card">
+        <div class="ap-header">
+          <span class="ap-icon">BUG</span>
+          <span class="ap-name">blame_the_caller()</span>
+        </div>
+        <div class="ap-body">
+          When many users hit the same error, the instinct is: <strong>"they're not reading."</strong>
+          But if 60% of users click the wrong button, that's not a user error — it's a signal
+          from the interface.
+        </div>
+        <div class="ap-fix">treat repeated user errors as failed assertions, not user failures</div>
+      </div>
+
+      <div class="ap-card">
+        <div class="ap-header">
+          <span class="ap-icon">BUG</span>
+          <span class="ap-name">familiarity_blindness()</span>
+        </div>
+        <div class="ap-body">
+          You built it. Every term on the dashboard is obvious to you. A first-time user sees
+          <strong>undocumented symbols in an unfamiliar codebase.</strong> Your mental model
+          isn't theirs.
+        </div>
+        <div class="ap-fix">clear_to_me != clear_to_user; always verify with fresh eyes</div>
+      </div>
+
+      <div class="ap-card">
+        <div class="ap-header">
+          <span class="ap-icon">BUG</span>
+          <span class="ap-name">treat_symptoms()</span>
+        </div>
+        <div class="ap-body">
+          Adding a tooltip to explain a confusing flow is like adding a <strong>catch block
+          that logs and swallows.</strong> The error is still happening — you've just hidden the
+          feedback loop.
+        </div>
+        <div class="ap-fix">fix the root cause in the flow, not the surface with explanations</div>
+      </div>
+
+      <div class="ap-card">
+        <div class="ap-header">
+          <span class="ap-icon">BUG</span>
+          <span class="ap-name">trust_stated_intent()</span>
+        </div>
+        <div class="ap-body">
+          Users say they want a feature. You build it. <strong>Nobody uses it.</strong>
+          Intent is self-reported and unreliable. Behaviour under real conditions is the
+          only signal worth trusting.
+        </div>
+        <div class="ap-fix">observed_behaviour.trust() > stated_intent.trust()</div>
+      </div>
+
+    </div>
+
+    <div class="callout red">
+      <span class="callout-label">the uncomfortable part</span>
+      Fixing these bugs doesn't require new skills — it requires ego flexibility.
+      Each one is a moment where the product is wrong and the user is right,
+      even when it doesn't feel that way.
+    </div>
+  </section>
+
+  <!-- §3 Observation -->
+  <section class="section s3" id="observe">
+    <div class="sec-num">§ 03</div>
+    <h2>Observation is the only source of truth</h2>
+
+    <p>
+      The difference between design thinking and product intuition is evidence.
+      Observation is where you collect it — and it's harder than it sounds because
+      the natural instinct is to intervene, explain, and help.
+    </p>
+
+    <div class="callout sage">
+      <span class="callout-label">the rule</span>
+      During observation sessions: don't correct users. Don't explain the product.
+      Don't finish their sentences. You're not a rubber duck — you're a profiler attached
+      to a production system. Watch, timestamp, note. Intervening corrupts the data.
+    </div>
+
+    <h3>What you're actually looking for</h3>
+    <p>
+      Individual behaviour is noise. <strong>Repeated behaviour across multiple users is signal.</strong>
+      A single user pausing on a screen could be anything. Five users pausing at the same point
+      in the same flow — that's a failing assertion worth investigating.
+    </p>
+
+    <!-- Observation log example -->
+    <div class="obs-log">
+      <div class="obs-log-header">
+        <span>// observation_log — edtech onboarding</span>
+        <span>n=8 sessions</span>
+      </div>
+      <div class="obs-entry">
+        <div class="obs-behaviour">pause on screen 1</div>
+        <div class="obs-assumption">"unclear value prop"</div>
+        <div class="obs-signal">→ actually: no indication of what happens next</div>
+      </div>
+      <div class="obs-entry">
+        <div class="obs-behaviour">scroll without clicking</div>
+        <div class="obs-assumption">"passive users"</div>
+        <div class="obs-signal">→ actually: looking for a skip option</div>
+      </div>
+      <div class="obs-entry">
+        <div class="obs-behaviour">skip intro video</div>
+        <div class="obs-assumption">"short attention span"</div>
+        <div class="obs-signal">→ actually: wanted lesson content, not a pitch</div>
+      </div>
+      <div class="obs-entry">
+        <div class="obs-behaviour">leave before starting</div>
+        <div class="obs-assumption">"low motivation"</div>
+        <div class="obs-signal">→ actually: clarity problem, not motivation problem</div>
+      </div>
+    </div>
+
+    <p>
+      Every "assumption" column above is what a team wrote in their retro before watching users.
+      Every "signal" column is what the observation actually revealed.
+      The gap between those two columns is where bad product decisions live.
+    </p>
+
+    <h3>A second example: the checkout pattern</h3>
+    <p>
+      Payment step abandonment in a checkout flow. Stack traces show no errors.
+      The initial hypothesis: <strong>payment gateway latency.</strong>
+    </p>
+    <p>
+      Observation reveals: users hesitate before selecting a payment method, switch to another
+      app mid-flow, return, then abandon. That's not a latency pattern.
+      That's a trust and total-cost-clarity pattern. Different root cause, entirely different fix.
+      Without watching, you'd have spent weeks optimising the wrong layer.
+    </p>
+
+    <div class="callout">
+      <span class="callout-label">the shift</span>
+      The question changes from <em>"why aren't users getting this?"</em> to
+      <em>"what are we assuming they already know?"</em> — that second question is
+      the one that leads somewhere.
+    </div>
+  </section>
+
+  <!-- §4 Practice -->
+  <section class="section s4" id="practice">
+    <div class="sec-num">§ 04</div>
+    <h2>Practising it — no frameworks required yet</h2>
+
+    <p>
+      Frameworks are useful once the underlying habit is built.
+      Starting with frameworks before the habit is like reaching for a design pattern
+      before you understand the problem you're solving.
+    </p>
+
+    <div class="definition">
+      <p>
+        Design thinking is <strong>learning to be wrong early</strong>
+        by watching real people honestly — before you've written the code,
+        not after you've shipped it.
+      </p>
+    </div>
+
+    <h3>The minimum viable practice</h3>
+
+    <ul class="checklist">
+      <li>
+        <span class="check-box">[ ]</span>
+        <span>Sit silently during user sessions. Resist fixing. Resist explaining. You're in observe mode, not support mode.</span>
+      </li>
+      <li>
+        <span class="check-box">[ ]</span>
+        <span>Note pauses, hesitations, and abandonment — timestamp them. These are your stack frames.</span>
+      </li>
+      <li>
+        <span class="check-box">[ ]</span>
+        <span>Look for the same behaviour repeating across at least three different users before treating it as signal.</span>
+      </li>
+      <li>
+        <span class="check-box">[ ]</span>
+        <span>After each session, ask: <em>what assumption did this break?</em> Write it down before you write any code.</span>
+      </li>
+      <li>
+        <span class="check-box">[ ]</span>
+        <span>Separate what users <em>say</em> they want from what they <em>do</em> when left alone with the product.</span>
+      </li>
+      <li>
+        <span class="check-box">[ ]</span>
+        <span>Treat recurring confusion as a failed test — reopen the problem definition, not just the implementation.</span>
+      </li>
+    </ul>
+
+    <div class="callout amber">
+      <span class="callout-label">expected feeling</span>
+      This will feel unproductive at first. You're watching instead of building.
+      Sitting with confusion instead of resolving it. That discomfort is the signal
+      you're doing it right — you haven't prematurely collapsed the problem space yet.
+    </div>
+
+    <h3>When frameworks actually help</h3>
+    <p>
+      Once you've got the observation habit — once you can consistently separate
+      what you assumed from what you saw — frameworks like journey mapping and
+      jobs-to-be-done become useful tools rather than cargo cult rituals.
+      They give structure to evidence you've already collected. They don't generate it.
+    </p>
+
+  </section>
+
+  <a class="back-link" href="index.html">← back to index</a>
+
+  <footer>
+    <span>Design Thinking · Dev Edition</span>
+    <span>observation over assumptions · behaviour over intent</span>
+  </footer>
+
+</div>
+
+</body>
+</html>
