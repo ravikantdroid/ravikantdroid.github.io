@@ -1,4 +1,4 @@
-# yourusername.github.io
+# ravikantdroid.github.io
 
 Personal dev reference site — quick lookups, patterns, and notes I actually use while building Android and Flutter apps.
 
