@@ -7,6 +7,7 @@ Personal dev reference site — quick lookups, patterns, and notes I actually us
 | Page | Description |
 |------|-------------|
 | [Android Clean Architecture](./android-arch-ref.html) | Interactive MVVM + Clean Arch reference with copy-ready Kotlin snippets |
+| [AOSP Launcher Internals](./launcher-ref.html) | Deep-dive: LauncherApps, WorkspaceItemInfo, AppWidgetHost, CellLayout, DragController, launcher.db |
 
 More coming: Flutter state management, TFLite integration, coroutines patterns.
 
@@ -19,9 +20,11 @@ More coming: Flutter state management, TFLite integration, coroutines patterns.
 ## Structure
 
 ```
-├── index.html            # Landing page
-├── android-arch-ref.html # Android Clean Architecture reference
-└── README.md             # This file
+├── index.html                 # Landing page
+├── android-arch-ref.html      # Android Clean Architecture reference
+├── launcher-ref.html          # AOSP Launcher Internals deep-dive
+├── design-thinking-ref.html   # Design Thinking isn't a framework
+└── README.md                  # This file
 ```
 
 ## Local Development
