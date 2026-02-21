@@ -613,7 +613,7 @@
       <div class="hero-kicker">AOSP · Platform Layer · System UI</div>
       <h1>Launcher<br><em>Internals</em></h1>
       <p class="hero-lede">
-        A technical deep-dive into how Android launchers are architected — from the AOSP Launcher2/Launcher3 codebase through WorkspaceItemInfo, AppWidgetHost, and the full lifecycle of app-launcher interaction.
+        A technical deep-dive into how Android launchers are architected — from the AOSP Launcher2/Launcher3 codebase through WorkspaceItemInfo, AppWidgetHost and the full lifecycle of app-launcher interaction.
       </p>
     </div>
     <div class="hero-meta">
@@ -635,7 +635,7 @@
     <div class="section-num">§ 01</div>
     <h2>The Launcher Stack</h2>
 
-    <p>A launcher is a privileged system application — it holds <strong>BIND_APPWIDGET</strong> permission, receives <strong>ACTION_MAIN + CATEGORY_HOME</strong> intent, and sits one layer above the WindowManager. Understanding the full stack is essential before customizing behavior.</p>
+    <p>A launcher is a privileged system application — it holds <strong>BIND_APPWIDGET</strong> permission, receives <strong>ACTION_MAIN + CATEGORY_HOME</strong> intent and sits one layer above the WindowManager. Understanding the full stack is essential before customizing behavior.</p>
 
     <!-- Blueprint Diagram -->
     <div class="blueprint">
@@ -780,7 +780,7 @@ wm.<span class="fn">setWallpaperOffsetSteps</span>(<span class="num">1f</span> /
 
     <div class="callout">
       <div class="callout-label">Key Insight</div>
-      Launcher3 introduced <strong>LauncherModel</strong> as a background thread that owns all data loading — it uses a <code>LoaderTask</code> (Runnable) to load workspace, AllApps, and widget data off the main thread, then dispatches results via callbacks. Never touch model data on the UI thread.
+      Launcher3 introduced <strong>LauncherModel</strong> as a background thread that owns all data loading — it uses a <code>LoaderTask</code> (Runnable) to load workspace, AllApps and widget data off the main thread, then dispatches results via callbacks. Never touch model data on the UI thread.
     </div>
   </section>
 
@@ -929,7 +929,7 @@ wm.<span class="fn">setWallpaperOffsetSteps</span>(<span class="num">1f</span> /
     <div class="section-num">§ 03</div>
     <h2>Widget System Internals</h2>
 
-    <p>Widgets are the most complex part of any launcher. They run in a <strong>remote process</strong>, communicate via <strong>RemoteViews</strong>, and require the launcher to be a trusted <code>AppWidgetHost</code>.</p>
+    <p>Widgets are the most complex part of any launcher. They run in a <strong>remote process</strong>, communicate via <strong>RemoteViews</strong> and require the launcher to be a trusted <code>AppWidgetHost</code>.</p>
 
     <div class="widget-grid">
       <div class="widget-card">
@@ -942,7 +942,7 @@ wm.<span class="fn">setWallpaperOffsetSteps</span>(<span class="num">1f</span> /
       </div>
       <div class="widget-card">
         <div class="wc-title">AppWidgetService</div>
-        <div class="wc-desc">System service (IPC boundary). Mediates between Host and Provider, manages widget IDs, and handles bind/unbind lifecycle.</div>
+        <div class="wc-desc">System service (IPC boundary). Mediates between Host and Provider, manages widget IDs and handles bind/unbind lifecycle.</div>
       </div>
       <div class="widget-card">
         <div class="wc-title">RemoteViews</div>
@@ -1034,7 +1034,7 @@ mWorkspace.<span class="fn">addInScreen</span>(hostView, itemInfo);</pre>
     <div class="section-num">§ 04</div>
     <h2>Workspace, DragLayer & CellLayout</h2>
 
-    <p>The workspace is a <strong>PagedView</strong> (horizontal scroll) containing multiple <strong>CellLayout</strong> pages. Every item on screen is placed into a cell grid — the grid math is non-trivial once you account for folders, spans, and RTL.</p>
+    <p>The workspace is a <strong>PagedView</strong> (horizontal scroll) containing multiple <strong>CellLayout</strong> pages. Every item on screen is placed into a cell grid — the grid math is non-trivial once you account for folders, spans and RTL.</p>
 
     <table class="schematic-table">
       <thead>
