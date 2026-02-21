@@ -1,37 +1,35 @@
-## Welcome to GitHub Pages
+# yourusername.github.io
 
-You can use the [editor on GitHub](https://github.com/ravikantdroid/ravikantdroid.github.io/edit/main/index.md) to maintain and preview the content for your website in Markdown files.
+Personal dev reference site — quick lookups, patterns, and notes I actually use while building Android and Flutter apps.
 
-Whenever you commit to this repository, GitHub Pages will run [Jekyll](https://jekyllrb.com/) to rebuild the pages in your site, from the content in your Markdown files.
+## Pages
 
-### Markdown
+| Page | Description |
+|------|-------------|
+| [Android Clean Architecture](./android-arch-ref.html) | Interactive MVVM + Clean Arch reference with copy-ready Kotlin snippets |
+| [AOSP Launcher Internals](./launcher-ref.html) | Deep-dive: LauncherApps, WorkspaceItemInfo, AppWidgetHost, CellLayout, DragController, launcher.db |
 
-Markdown is a lightweight and easy-to-use syntax for styling your writing. It includes conventions for
+More coming: Flutter state management, TFLite integration, coroutines patterns.
 
-```markdown
-Syntax highlighted code block
+## Stack
 
-# Header 1
-## Header 2
-### Header 3
+**Android** — Kotlin, Coroutines, StateFlow, Room, Hilt, Retrofit, ViewBinding, MVVM, Clean Architecture  
+**Flutter** — Dart, BLoC, Riverpod  
+**AI/ML** — TFLite, ML Kit, LLM APIs
 
-- Bulleted
-- List
+## Structure
 
-1. Numbered
-2. List
-
-**Bold** and _Italic_ and `Code` text
-
-[Link](url) and ![Image](src)
+```
+├── index.html            # Landing page
+├── android-arch-ref.html # Android Clean Architecture reference
+├── launcher-ref.html     # AOSP Launcher Internals deep-dive
+└── README.md             # This file
 ```
 
-For more details see [GitHub Flavored Markdown](https://guides.github.com/features/mastering-markdown/).
+## Local Development
 
-### Jekyll Themes
+No build step — just open any `.html` file directly in a browser. Files are fully self-contained.
 
-Your Pages site will use the layout and styles from the Jekyll theme you have selected in your [repository settings](https://github.com/ravikantdroid/ravikantdroid.github.io/settings/pages). The name of this theme is saved in the Jekyll `_config.yml` configuration file.
+## Deployment
 
-### Support or Contact
-
-Having trouble with Pages? Check out our [documentation](https://docs.github.com/categories/github-pages-basics/) or [contact support](https://support.github.com/contact) and we’ll help you sort it out.
+Served via [GitHub Pages](https://pages.github.com/) from the `main` branch root.
