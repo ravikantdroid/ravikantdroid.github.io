@@ -1,1 +1,560 @@
-<h1>Hello</h1>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mobile Dev · References & Notes</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;600&family=Playfair+Display:wght@700;900&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0c0f;
+    --ink: #e8e6e1;
+    --muted: #5a6070;
+    --faint: #1a1d24;
+    --border: #1f2330;
+    --green: #4fffb0;
+    --blue: #6e8cff;
+    --orange: #ff8c42;
+    --red: #ff6b6b;
+    --yellow: #ffd166;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: 'IBM Plex Mono', monospace;
+    min-height: 100vh;
+    cursor: none;
+  }
+
+  /* Custom cursor */
+  .cursor {
+    position: fixed;
+    width: 6px; height: 6px;
+    background: var(--green);
+    border-radius: 50%;
+    pointer-events: none;
+    z-index: 9999;
+    transition: transform 0.1s ease;
+    mix-blend-mode: screen;
+  }
+  .cursor-ring {
+    position: fixed;
+    width: 28px; height: 28px;
+    border: 1px solid rgba(79,255,176,0.3);
+    border-radius: 50%;
+    pointer-events: none;
+    z-index: 9998;
+    transition: transform 0.25s ease, width 0.2s, height 0.2s, opacity 0.2s;
+  }
+
+  /* Scanline overlay */
+  body::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 2px,
+      rgba(0,0,0,0.08) 2px,
+      rgba(0,0,0,0.08) 4px
+    );
+    pointer-events: none;
+    z-index: 100;
+  }
+
+  /* Layout */
+  .page {
+    max-width: 860px;
+    margin: 0 auto;
+    padding: 0 2rem;
+  }
+
+  /* ── HERO ── */
+  .hero {
+    padding: 7rem 0 5rem;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .hero-eyebrow {
+    font-size: 0.7rem;
+    letter-spacing: 0.2em;
+    color: var(--muted);
+    text-transform: uppercase;
+    margin-bottom: 2rem;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    opacity: 0;
+    animation: fadeUp 0.6s ease 0.1s forwards;
+  }
+  .hero-eyebrow::before {
+    content: '';
+    width: 2rem;
+    height: 1px;
+    background: var(--green);
+  }
+
+  .hero-name {
+    font-family: 'Playfair Display', serif;
+    font-size: clamp(3.5rem, 9vw, 6.5rem);
+    font-weight: 900;
+    line-height: 0.95;
+    letter-spacing: -0.03em;
+    margin-bottom: 1.5rem;
+    opacity: 0;
+    animation: fadeUp 0.7s ease 0.2s forwards;
+  }
+
+  .hero-name .line2 {
+    color: transparent;
+    -webkit-text-stroke: 1px rgba(232,230,225,0.25);
+  }
+
+  .hero-sub {
+    font-size: 0.85rem;
+    color: var(--muted);
+    line-height: 1.8;
+    max-width: 480px;
+    margin-bottom: 3rem;
+    opacity: 0;
+    animation: fadeUp 0.7s ease 0.35s forwards;
+  }
+
+  .hero-sub span { color: var(--green); }
+
+  .hero-stats {
+    display: flex;
+    gap: 2.5rem;
+    flex-wrap: wrap;
+    opacity: 0;
+    animation: fadeUp 0.7s ease 0.45s forwards;
+  }
+
+  .stat-item {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+  }
+
+  .stat-num {
+    font-size: 1.6rem;
+    font-weight: 600;
+    color: var(--ink);
+    letter-spacing: -0.02em;
+  }
+
+  .stat-label {
+    font-size: 0.65rem;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+  }
+
+  /* Floating code snippet in hero */
+  .hero-code {
+    position: absolute;
+    right: -1rem;
+    top: 5rem;
+    background: var(--faint);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 1.25rem 1.5rem;
+    font-size: 0.72rem;
+    line-height: 1.7;
+    color: var(--muted);
+    max-width: 280px;
+    opacity: 0;
+    animation: fadeLeft 0.8s ease 0.6s forwards;
+  }
+
+  @media (max-width: 700px) { .hero-code { display: none; } }
+
+  .hero-code .kw { color: #7c6af5; }
+  .hero-code .fn { color: var(--green); }
+  .hero-code .cl { color: var(--blue); }
+  .hero-code .cm { color: #2a3040; }
+
+  /* ── DIVIDER ── */
+  .divider {
+    border: none;
+    border-top: 1px solid var(--border);
+    margin: 0;
+  }
+
+  /* ── STACK ── */
+  .stack-section {
+    padding: 4rem 0;
+    opacity: 0;
+    animation: fadeUp 0.7s ease 0.7s forwards;
+  }
+
+  .section-label {
+    font-size: 0.65rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 1.5rem;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+  }
+  .section-label::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+
+  .stack-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  .stack-chip {
+    padding: 0.35rem 0.85rem;
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    font-size: 0.75rem;
+    color: var(--muted);
+    transition: border-color 0.15s, color 0.15s;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .stack-chip::before {
+    content: '';
+    position: absolute;
+    left: 0; top: 0; bottom: 0;
+    width: 2px;
+  }
+
+  .stack-chip.green::before { background: var(--green); }
+  .stack-chip.blue::before  { background: var(--blue); }
+  .stack-chip.orange::before { background: var(--orange); }
+  .stack-chip.yellow::before { background: var(--yellow); }
+
+  .stack-chip:hover { border-color: rgba(255,255,255,0.15); color: var(--ink); }
+
+  /* ── REFERENCES ── */
+  .refs-section {
+    padding: 4rem 0;
+  }
+
+  .ref-card {
+    display: block;
+    text-decoration: none;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 1.75rem;
+    margin-bottom: 1rem;
+    background: var(--faint);
+    transition: border-color 0.2s, transform 0.15s, background 0.2s;
+    position: relative;
+    overflow: hidden;
+    opacity: 0;
+  }
+
+  .ref-card:nth-child(1) { animation: fadeUp 0.6s ease 0.1s forwards; }
+  .ref-card:nth-child(2) { animation: fadeUp 0.6s ease 0.2s forwards; }
+  .ref-card:nth-child(3) { animation: fadeUp 0.6s ease 0.3s forwards; }
+
+  .ref-card::before {
+    content: '';
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, var(--green), transparent);
+    transform: scaleX(0);
+    transform-origin: left;
+    transition: transform 0.3s ease;
+  }
+
+  .ref-card:hover {
+    border-color: rgba(255,255,255,0.1);
+    background: #1a1d24;
+    transform: translateX(4px);
+  }
+
+  .ref-card:hover::before { transform: scaleX(1); }
+
+  .ref-top {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 0.75rem;
+  }
+
+  .ref-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.15rem;
+    font-weight: 700;
+    color: var(--ink);
+    letter-spacing: -0.01em;
+  }
+
+  .ref-arrow {
+    color: var(--muted);
+    font-size: 0.9rem;
+    transition: transform 0.2s, color 0.2s;
+    flex-shrink: 0;
+    margin-top: 0.1rem;
+  }
+  .ref-card:hover .ref-arrow { transform: translate(3px, -3px); color: var(--green); }
+
+  .ref-desc {
+    font-size: 0.78rem;
+    color: var(--muted);
+    line-height: 1.7;
+    margin-bottom: 1rem;
+  }
+
+  .ref-tags {
+    display: flex;
+    gap: 0.4rem;
+    flex-wrap: wrap;
+  }
+
+  .ref-tag {
+    font-size: 0.62rem;
+    padding: 0.15rem 0.5rem;
+    border-radius: 2px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  .tag-green { background: rgba(79,255,176,0.08); color: var(--green); border: 1px solid rgba(79,255,176,0.15); }
+  .tag-blue  { background: rgba(110,140,255,0.08); color: var(--blue); border: 1px solid rgba(110,140,255,0.15); }
+  .tag-orange{ background: rgba(255,140,66,0.08); color: var(--orange); border: 1px solid rgba(255,140,66,0.15); }
+  .tag-red   { background: rgba(255,107,107,0.08); color: var(--red); border: 1px solid rgba(255,107,107,0.15); }
+
+  .ref-wip {
+    font-size: 0.65rem;
+    color: var(--muted);
+    border: 1px dashed var(--border);
+    border-radius: 8px;
+    padding: 1.25rem 1.75rem;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+    opacity: 0;
+    animation: fadeUp 0.6s ease 0.4s forwards;
+  }
+  .ref-wip::before {
+    content: '···';
+    color: var(--muted);
+    letter-spacing: 0.2em;
+  }
+
+  /* ── FOOTER ── */
+  footer {
+    border-top: 1px solid var(--border);
+    padding: 2.5rem 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 1rem;
+  }
+
+  .footer-left {
+    font-size: 0.7rem;
+    color: var(--muted);
+    line-height: 1.7;
+  }
+
+  .footer-left a {
+    color: var(--muted);
+    text-decoration: none;
+    border-bottom: 1px solid var(--border);
+    transition: color 0.15s, border-color 0.15s;
+  }
+  .footer-left a:hover { color: var(--green); border-color: var(--green); }
+
+  .footer-dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--green);
+    box-shadow: 0 0 8px var(--green);
+    animation: pulse 2s ease-in-out infinite;
+  }
+
+  /* Animations */
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(16px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes fadeLeft {
+    from { opacity: 0; transform: translateX(16px); }
+    to   { opacity: 0.6; transform: translateX(0); }
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+  }
+</style>
+</head>
+<body>
+
+<div class="cursor" id="cursor"></div>
+<div class="cursor-ring" id="cursorRing"></div>
+
+<div class="page">
+
+  <!-- HERO -->
+  <section class="hero">
+    <div class="hero-eyebrow">mobile dev since 2011</div>
+
+    <h1 class="hero-name">
+      Dev<br>
+      <span class="line2">Notes.</span>
+    </h1>
+
+    <p class="hero-sub">
+      Reference sheets, patterns, and quick lookups.<br>
+      <span>Android · Flutter · AI/ML on mobile.</span><br>
+      Built for my own use — shared in case it's useful.
+    </p>
+
+    <div class="hero-stats">
+      <div class="stat-item">
+        <span class="stat-num">14+</span>
+        <span class="stat-label">years shipping</span>
+      </div>
+      <div class="stat-item">
+        <span class="stat-num">Kotlin</span>
+        <span class="stat-label">primary language</span>
+      </div>
+      <div class="stat-item">
+        <span class="stat-num">MVVM</span>
+        <span class="stat-label">default arch</span>
+      </div>
+    </div>
+
+    <!-- Decorative code snippet -->
+    <div class="hero-code">
+<span class="cm">// always here, always clean</span>
+<span class="kw">private val</span> _state =
+  <span class="fn">MutableStateFlow</span>&lt;<span class="cl">UiState</span>&gt;(
+    <span class="cl">UiState.Loading</span>
+  )
+<span class="kw">val</span> state = _state
+  .<span class="fn">asStateFlow</span>()
+    </div>
+  </section>
+
+  <hr class="divider">
+
+  <!-- STACK -->
+  <section class="stack-section">
+    <div class="section-label">stack</div>
+    <div class="stack-grid">
+      <span class="stack-chip green">Kotlin</span>
+      <span class="stack-chip green">Coroutines</span>
+      <span class="stack-chip green">StateFlow</span>
+      <span class="stack-chip green">Room</span>
+      <span class="stack-chip green">Hilt</span>
+      <span class="stack-chip green">Retrofit</span>
+      <span class="stack-chip green">ViewBinding</span>
+      <span class="stack-chip blue">Flutter</span>
+      <span class="stack-chip blue">Dart</span>
+      <span class="stack-chip blue">BLoC</span>
+      <span class="stack-chip blue">Riverpod</span>
+      <span class="stack-chip orange">TFLite</span>
+      <span class="stack-chip orange">ML Kit</span>
+      <span class="stack-chip orange">LLM APIs</span>
+      <span class="stack-chip yellow">Clean Architecture</span>
+      <span class="stack-chip yellow">MVVM</span>
+      <span class="stack-chip yellow">Java</span>
+    </div>
+  </section>
+
+  <hr class="divider">
+
+  <!-- REFERENCE PAGES -->
+  <section class="refs-section">
+    <div class="section-label">reference pages</div>
+
+    <a class="ref-card" href="android-arch-ref.html">
+      <div class="ref-top">
+        <span class="ref-title">Android Clean Architecture</span>
+        <span class="ref-arrow">↗</span>
+      </div>
+      <p class="ref-desc">
+        Interactive layer-by-layer reference for Clean Architecture + MVVM.
+        Covers UI → ViewModel → UseCase → Repository → DataSource with
+        copy-ready Kotlin snippets. Includes offline-first Flow, parallel
+        coroutines, streaming LLM, ML Kit, and ViewModel unit testing patterns.
+      </p>
+      <div class="ref-tags">
+        <span class="ref-tag tag-green">Kotlin</span>
+        <span class="ref-tag tag-green">MVVM</span>
+        <span class="ref-tag tag-green">Room</span>
+        <span class="ref-tag tag-green">Coroutines</span>
+        <span class="ref-tag tag-blue">Hilt</span>
+        <span class="ref-tag tag-orange">ML Kit</span>
+      </div>
+    </a>
+
+    <div class="ref-wip">More pages coming — Flutter state management, TFLite integration, coroutines patterns</div>
+
+  </section>
+
+  <!-- FOOTER -->
+  <footer>
+    <div class="footer-left">
+      Personal dev reference · Not a blog · No comments section<br>
+      <a href="https://github.com" target="_blank">github.com/yourusername</a>
+    </div>
+    <div class="footer-dot" title="online"></div>
+  </footer>
+
+</div>
+
+<script>
+  // Custom cursor
+  const cursor = document.getElementById('cursor');
+  const ring = document.getElementById('cursorRing');
+  let mx = 0, my = 0, rx = 0, ry = 0;
+
+  document.addEventListener('mousemove', e => {
+    mx = e.clientX; my = e.clientY;
+    cursor.style.left = mx - 3 + 'px';
+    cursor.style.top  = my - 3 + 'px';
+  });
+
+  // Laggy ring follow
+  (function loop() {
+    rx += (mx - rx) * 0.12;
+    ry += (my - ry) * 0.12;
+    ring.style.left = rx - 14 + 'px';
+    ring.style.top  = ry - 14 + 'px';
+    requestAnimationFrame(loop);
+  })();
+
+  // Expand ring on hoverable elements
+  document.querySelectorAll('a, .stack-chip').forEach(el => {
+    el.addEventListener('mouseenter', () => {
+      ring.style.width = '48px';
+      ring.style.height = '48px';
+      ring.style.opacity = '0.6';
+    });
+    el.addEventListener('mouseleave', () => {
+      ring.style.width = '28px';
+      ring.style.height = '28px';
+      ring.style.opacity = '1';
+    });
+  });
+</script>
+
+</body>
+</html>
