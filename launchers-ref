@@ -1,0 +1,1214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AOSP Launcher Internals · Deep Reference</title>
+<link href="https://fonts.googleapis.com/css2?family=Crimson+Pro:ital,wght@0,300;0,400;0,600;1,300;1,400&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #f5f0e8;
+    --paper: #faf8f3;
+    --ink: #1a1612;
+    --ink2: #2d2820;
+    --muted: #8a7f6e;
+    --border: #d4c9b0;
+    --border2: #c4b89a;
+    --accent: #1a3a5c;
+    --accent2: #8b1a1a;
+    --accent3: #1a5c2a;
+    --accent4: #5c3a1a;
+    --highlight: rgba(26,58,92,0.06);
+    --rule: #c4b89a;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: 'Crimson Pro', serif;
+    font-size: 17px;
+    line-height: 1.7;
+    min-height: 100vh;
+  }
+
+  /* Paper texture overlay */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23noise)' opacity='0.035'/%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: 200;
+    opacity: 0.6;
+  }
+
+  /* ── Layout ── */
+  .page-wrap {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 0 2.5rem;
+  }
+
+  /* ── Running header ── */
+  .running-header {
+    border-bottom: 2px solid var(--ink);
+    padding: 1.25rem 0 0.6rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 0;
+    position: sticky;
+    top: 0;
+    background: var(--bg);
+    z-index: 50;
+  }
+
+  .rh-title {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.65rem;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  .rh-nav {
+    display: flex;
+    gap: 1.5rem;
+  }
+
+  .rh-nav a {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.62rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--muted);
+    text-decoration: none;
+    transition: color 0.15s;
+  }
+  .rh-nav a:hover { color: var(--accent); }
+
+  /* ── Hero / Title Block ── */
+  .hero {
+    padding: 5rem 0 3rem;
+    display: grid;
+    grid-template-columns: 1fr 220px;
+    gap: 3rem;
+    align-items: end;
+    border-bottom: 1px solid var(--rule);
+    opacity: 0;
+    animation: fadeIn 0.8s ease 0.1s forwards;
+  }
+
+  @media (max-width: 680px) {
+    .hero { grid-template-columns: 1fr; }
+    .hero-meta { display: none; }
+  }
+
+  .hero-kicker {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.7rem;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 1.25rem;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+  }
+  .hero-kicker::before {
+    content: '';
+    width: 2rem;
+    height: 1px;
+    background: var(--accent);
+  }
+
+  h1 {
+    font-size: clamp(2.8rem, 6vw, 4.2rem);
+    font-weight: 300;
+    line-height: 1.05;
+    letter-spacing: -0.02em;
+    color: var(--ink);
+    margin-bottom: 1.25rem;
+  }
+
+  h1 em {
+    font-style: italic;
+    color: var(--accent);
+  }
+
+  .hero-lede {
+    font-size: 1.15rem;
+    color: var(--muted);
+    font-weight: 300;
+    max-width: 520px;
+    line-height: 1.6;
+  }
+
+  .hero-meta {
+    border-left: 1px solid var(--rule);
+    padding-left: 1.5rem;
+    font-family: 'DM Mono', monospace;
+    font-size: 0.68rem;
+    color: var(--muted);
+    line-height: 2.2;
+  }
+
+  .hero-meta .meta-label {
+    color: var(--accent);
+    display: block;
+    margin-top: 0.75rem;
+    font-size: 0.6rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+  }
+  .hero-meta .meta-label:first-child { margin-top: 0; }
+
+  /* ── Section typography ── */
+  .section {
+    padding: 3.5rem 0;
+    border-bottom: 1px solid var(--rule);
+    opacity: 0;
+    animation: fadeIn 0.7s ease forwards;
+  }
+
+  .section-num {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.62rem;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 0.4rem;
+  }
+
+  h2 {
+    font-size: 1.9rem;
+    font-weight: 400;
+    letter-spacing: -0.02em;
+    color: var(--ink);
+    margin-bottom: 1.5rem;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 0.75rem;
+  }
+
+  h3 {
+    font-size: 1.2rem;
+    font-weight: 600;
+    color: var(--ink2);
+    margin: 2rem 0 0.75rem;
+    letter-spacing: -0.01em;
+  }
+
+  p { margin-bottom: 1rem; color: var(--ink2); }
+
+  strong { font-weight: 600; color: var(--ink); }
+
+  /* ── Blueprint Diagram ── */
+  .blueprint {
+    background: var(--accent);
+    border-radius: 4px;
+    padding: 2rem;
+    margin: 2rem 0;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .blueprint::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(255,255,255,0.04) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,0.04) 1px, transparent 1px);
+    background-size: 28px 28px;
+  }
+
+  .blueprint-title {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.62rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: rgba(255,255,255,0.4);
+    margin-bottom: 1.5rem;
+    position: relative;
+  }
+
+  .bp-stack {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    position: relative;
+  }
+
+  .bp-layer {
+    display: flex;
+    align-items: stretch;
+    gap: 2px;
+    cursor: pointer;
+  }
+
+  .bp-label {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.68rem;
+    color: rgba(255,255,255,0.5);
+    writing-mode: vertical-rl;
+    text-orientation: mixed;
+    transform: rotate(180deg);
+    padding: 0.5rem 0.3rem;
+    letter-spacing: 0.08em;
+    white-space: nowrap;
+    min-width: 22px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .bp-block {
+    flex: 1;
+    padding: 0.65rem 1rem;
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 2px;
+    transition: background 0.2s, border-color 0.2s;
+    position: relative;
+  }
+
+  .bp-layer:hover .bp-block,
+  .bp-layer.active .bp-block {
+    background: rgba(255,255,255,0.08);
+    border-color: rgba(255,255,255,0.3);
+  }
+
+  .bp-block-name {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.72rem;
+    color: rgba(255,255,255,0.9);
+    margin-bottom: 0.2rem;
+    font-weight: 500;
+  }
+
+  .bp-block-sub {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.6rem;
+    color: rgba(255,255,255,0.35);
+    letter-spacing: 0.05em;
+  }
+
+  .bp-arrow {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.6rem;
+    color: rgba(255,255,255,0.2);
+    text-align: center;
+    padding: 0.1rem;
+    letter-spacing: 0.3em;
+  }
+
+  /* Code expansion panel from blueprint */
+  .bp-detail {
+    display: none;
+    margin-top: 1rem;
+    background: rgba(0,0,0,0.25);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 3px;
+    overflow: hidden;
+    animation: slideDown 0.2s ease;
+  }
+  .bp-detail.open { display: block; }
+
+  .bp-detail-header {
+    padding: 0.5rem 1rem;
+    background: rgba(0,0,0,0.2);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+  }
+
+  .bp-detail-file {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.62rem;
+    color: rgba(255,255,255,0.4);
+  }
+
+  .bp-copy {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.6rem;
+    background: transparent;
+    border: 1px solid rgba(255,255,255,0.15);
+    color: rgba(255,255,255,0.35);
+    padding: 0.15rem 0.5rem;
+    border-radius: 2px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .bp-copy:hover { border-color: rgba(255,255,255,0.4); color: rgba(255,255,255,0.7); }
+  .bp-copy.copied { border-color: #4fffb0; color: #4fffb0; }
+
+  .bp-detail pre {
+    padding: 1rem;
+    font-family: 'DM Mono', monospace;
+    font-size: 0.72rem;
+    line-height: 1.7;
+    overflow-x: auto;
+    color: rgba(255,255,255,0.7);
+  }
+
+  /* Syntax in blueprint */
+  .bp-detail .kw  { color: #88ccff; }
+  .bp-detail .fn  { color: #88ffcc; }
+  .bp-detail .cl  { color: #ffcc88; }
+  .bp-detail .str { color: #ffaa88; }
+  .bp-detail .cm  { color: rgba(255,255,255,0.25); }
+  .bp-detail .an  { color: #cc88ff; }
+
+  /* ── Code blocks (light) ── */
+  .code-block {
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    overflow: hidden;
+    margin: 1.5rem 0;
+    background: var(--paper);
+  }
+
+  .code-header {
+    background: var(--bg);
+    border-bottom: 1px solid var(--border);
+    padding: 0.5rem 1rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .code-filename {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.68rem;
+    color: var(--accent);
+  }
+
+  .copy-btn {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.62rem;
+    background: transparent;
+    border: 1px solid var(--border2);
+    color: var(--muted);
+    padding: 0.15rem 0.5rem;
+    border-radius: 2px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .copy-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .copy-btn.copied { border-color: var(--accent3); color: var(--accent3); }
+
+  .code-block pre {
+    padding: 1.25rem;
+    font-family: 'DM Mono', monospace;
+    font-size: 0.78rem;
+    line-height: 1.75;
+    overflow-x: auto;
+    color: var(--ink2);
+  }
+
+  /* Light theme syntax */
+  .kw  { color: #1a3a8b; font-weight: 500; }
+  .fn  { color: #1a6b3a; }
+  .cl  { color: #7a3a00; }
+  .str { color: #8b1a1a; }
+  .cm  { color: #a09070; font-style: italic; }
+  .an  { color: #5a1a8b; }
+  .num { color: #1a5c7a; }
+
+  /* ── Schematic table ── */
+  .schematic-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 1.5rem 0;
+    font-size: 0.9rem;
+  }
+
+  .schematic-table th {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.62rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--muted);
+    border-bottom: 2px solid var(--ink);
+    padding: 0.5rem 1rem 0.5rem 0;
+    text-align: left;
+    font-weight: 400;
+  }
+
+  .schematic-table td {
+    border-bottom: 1px solid var(--border);
+    padding: 0.65rem 1rem 0.65rem 0;
+    vertical-align: top;
+    color: var(--ink2);
+  }
+
+  .schematic-table td:first-child {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.75rem;
+    color: var(--accent);
+    white-space: nowrap;
+    padding-right: 2rem;
+  }
+
+  .schematic-table tr:hover td { background: var(--highlight); }
+
+  /* ── Callout ── */
+  .callout {
+    border-left: 3px solid var(--accent);
+    padding: 1rem 1.25rem;
+    background: var(--highlight);
+    margin: 1.5rem 0;
+    font-size: 0.95rem;
+    color: var(--ink2);
+  }
+  .callout.warn { border-color: var(--accent2); background: rgba(139,26,26,0.04); }
+  .callout.tip  { border-color: var(--accent3); background: rgba(26,92,42,0.04); }
+
+  .callout-label {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.62rem;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    margin-bottom: 0.4rem;
+  }
+  .callout .callout-label { color: var(--accent); }
+  .callout.warn .callout-label { color: var(--accent2); }
+  .callout.tip .callout-label  { color: var(--accent3); }
+
+  /* ── Intent anatomy ── */
+  .intent-diagram {
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    overflow: hidden;
+    margin: 1.5rem 0;
+    font-family: 'DM Mono', monospace;
+    font-size: 0.75rem;
+  }
+
+  .intent-row {
+    display: flex;
+    border-bottom: 1px solid var(--border);
+  }
+  .intent-row:last-child { border-bottom: none; }
+
+  .intent-key {
+    padding: 0.6rem 1rem;
+    background: var(--bg);
+    border-right: 1px solid var(--border);
+    min-width: 180px;
+    color: var(--accent);
+    font-weight: 500;
+  }
+
+  .intent-val {
+    padding: 0.6rem 1rem;
+    color: var(--muted);
+    flex: 1;
+  }
+
+  .intent-val strong { color: var(--ink2); font-weight: 500; }
+
+  /* ── Widget anatomy ── */
+  .widget-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+    margin: 1.5rem 0;
+  }
+
+  @media (max-width: 600px) { .widget-grid { grid-template-columns: 1fr; } }
+
+  .widget-card {
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 1rem 1.25rem;
+    background: var(--paper);
+  }
+
+  .wc-title {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.68rem;
+    color: var(--accent);
+    letter-spacing: 0.08em;
+    margin-bottom: 0.4rem;
+    font-weight: 500;
+  }
+
+  .wc-desc {
+    font-size: 0.88rem;
+    color: var(--muted);
+    line-height: 1.5;
+  }
+
+  /* ── Back link ── */
+  .back-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-family: 'DM Mono', monospace;
+    font-size: 0.68rem;
+    letter-spacing: 0.08em;
+    color: var(--muted);
+    text-decoration: none;
+    padding: 1.5rem 0;
+    transition: color 0.15s;
+  }
+  .back-link:hover { color: var(--accent); }
+
+  /* ── Footer ── */
+  footer {
+    border-top: 2px solid var(--ink);
+    padding: 2rem 0;
+    display: flex;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 1rem;
+    font-family: 'DM Mono', monospace;
+    font-size: 0.65rem;
+    color: var(--muted);
+    letter-spacing: 0.05em;
+  }
+
+  /* ── Animations ── */
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(12px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes slideDown {
+    from { opacity: 0; transform: translateY(-6px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  .s1 { animation-delay: 0.15s; }
+  .s2 { animation-delay: 0.25s; }
+  .s3 { animation-delay: 0.35s; }
+  .s4 { animation-delay: 0.45s; }
+  .s5 { animation-delay: 0.55s; }
+  .s6 { animation-delay: 0.65s; }
+</style>
+</head>
+<body>
+
+<div class="page-wrap">
+
+  <!-- Running Header -->
+  <div class="running-header">
+    <span class="rh-title">AOSP Launcher Internals · Deep Reference</span>
+    <nav class="rh-nav">
+      <a href="#architecture">Architecture</a>
+      <a href="#apps">App Interaction</a>
+      <a href="#widgets">Widgets</a>
+      <a href="#workspace">Workspace</a>
+      <a href="index.html">← Home</a>
+    </nav>
+  </div>
+
+  <!-- Hero -->
+  <header class="hero">
+    <div class="hero-left">
+      <div class="hero-kicker">AOSP · Platform Layer · System UI</div>
+      <h1>Launcher<br><em>Internals</em></h1>
+      <p class="hero-lede">
+        A technical deep-dive into how Android launchers are architected — from the AOSP Launcher2/Launcher3 codebase through WorkspaceItemInfo, AppWidgetHost, and the full lifecycle of app-launcher interaction.
+      </p>
+    </div>
+    <div class="hero-meta">
+      <span class="meta-label">Base</span>
+      Launcher2 · Launcher3
+      <span class="meta-label">Layer</span>
+      System UI / Platform
+      <span class="meta-label">APIs</span>
+      LauncherApps · AppWidgetHost
+      <span class="meta-label">Min SDK</span>
+      API 21 → 35
+      <span class="meta-label">Language</span>
+      Java · Kotlin
+    </div>
+  </header>
+
+  <!-- §1 Architecture Stack -->
+  <section class="section s1" id="architecture">
+    <div class="section-num">§ 01</div>
+    <h2>The Launcher Stack</h2>
+
+    <p>A launcher is a privileged system application — it holds <strong>BIND_APPWIDGET</strong> permission, receives <strong>ACTION_MAIN + CATEGORY_HOME</strong> intent, and sits one layer above the WindowManager. Understanding the full stack is essential before customizing behavior.</p>
+
+    <!-- Blueprint Diagram -->
+    <div class="blueprint">
+      <div class="blueprint-title">// fig 1.1 — launcher architecture stack (click layer to expand)</div>
+      <div class="bp-stack">
+
+        <div class="bp-layer" onclick="toggleBp('bp-app')">
+          <div class="bp-label">USER</div>
+          <div class="bp-block">
+            <div class="bp-block-name">Your Launcher APK</div>
+            <div class="bp-block-sub">Workspace · AllApps · Hotseat · DragLayer · SearchBar</div>
+          </div>
+        </div>
+        <div class="bp-detail" id="bp-app">
+          <div class="bp-detail-header">
+            <span class="bp-detail-file">Launcher.java / LauncherActivity.kt</span>
+            <button class="bp-copy" onclick="event.stopPropagation();bpCopy('bpcode-app',this)">copy</button>
+          </div>
+          <pre id="bpcode-app"><span class="cm">// Launcher3 entry point — extends Activity</span>
+<span class="kw">public class</span> <span class="cl">Launcher</span> <span class="kw">extends</span> <span class="cl">StatefulActivity</span>&lt;<span class="cl">LauncherState</span>&gt;
+    <span class="kw">implements</span> <span class="cl">LauncherExterns</span>, <span class="cl">LauncherOverlayCallbacks</span> {
+
+    <span class="an">@Override</span>
+    <span class="kw">protected void</span> <span class="fn">onCreate</span>(<span class="cl">Bundle</span> savedInstanceState) {
+        <span class="kw">super</span>.<span class="fn">onCreate</span>(savedInstanceState);
+        <span class="cm">// LauncherAppState is a singleton — survives config changes</span>
+        <span class="cl">LauncherAppState</span> app = <span class="cl">LauncherAppState</span>.<span class="fn">getInstance</span>(this);
+        mModel = app.<span class="fn">getModel</span>();
+
+        <span class="cm">// Inflate root — DragLayer wraps everything</span>
+        <span class="fn">setContentView</span>(<span class="cl">R</span>.layout.launcher);
+        mDragLayer = <span class="fn">findViewById</span>(<span class="cl">R</span>.id.drag_layer);
+        mWorkspace = <span class="fn">findViewById</span>(<span class="cl">R</span>.id.workspace);
+    }
+}</span></pre>
+        </div>
+
+        <div class="bp-arrow">↕  IPC / Binder</div>
+
+        <div class="bp-layer" onclick="toggleBp('bp-launcherapps')">
+          <div class="bp-label">FRAMEWORK</div>
+          <div class="bp-block">
+            <div class="bp-block-name">LauncherApps (System Service)</div>
+            <div class="bp-block-sub">getActivityList · startMainActivity · getShortcuts · registerCallback</div>
+          </div>
+        </div>
+        <div class="bp-detail" id="bp-launcherapps">
+          <div class="bp-detail-header">
+            <span class="bp-detail-file">LauncherAppsService.java (framework)</span>
+            <button class="bp-copy" onclick="event.stopPropagation();bpCopy('bpcode-la',this)">copy</button>
+          </div>
+          <pre id="bpcode-la"><span class="cm">// LauncherApps — your primary gateway to app info</span>
+<span class="cl">LauncherApps</span> launcherApps =
+    (<span class="cl">LauncherApps</span>) <span class="fn">getSystemService</span>(<span class="cl">Context</span>.LAUNCHER_APPS_SERVICE);
+
+<span class="cm">// Get all launchable activities for current user</span>
+<span class="cl">List</span>&lt;<span class="cl">LauncherActivityInfo</span>&gt; activities =
+    launcherApps.<span class="fn">getActivityList</span>(<span class="kw">null</span>, <span class="cl">Process</span>.<span class="fn">myUserHandle</span>());
+
+<span class="cm">// Launch with proper bounds for animation</span>
+launcherApps.<span class="fn">startMainActivity</span>(
+    componentName,
+    userHandle,
+    sourceBounds,  <span class="cm">// icon rect for launch animation</span>
+    activityOptions.<span class="fn">toBundle</span>()
+);
+
+<span class="cm">// React to app installs/removes/updates</span>
+launcherApps.<span class="fn">registerCallback</span>(<span class="kw">new</span> <span class="cl">LauncherApps.Callback</span>() {
+    <span class="an">@Override</span>
+    <span class="kw">public void</span> <span class="fn">onPackageAdded</span>(<span class="cl">String</span> pkg, <span class="cl">UserHandle</span> user) { ... }
+    <span class="an">@Override</span>
+    <span class="kw">public void</span> <span class="fn">onPackageRemoved</span>(<span class="cl">String</span> pkg, <span class="cl">UserHandle</span> user) { ... }
+    <span class="an">@Override</span>
+    <span class="kw">public void</span> <span class="fn">onPackageChanged</span>(<span class="cl">String</span> pkg, <span class="cl">UserHandle</span> user) { ... }
+});</pre>
+        </div>
+
+        <div class="bp-arrow">↕  Binder / AIDL</div>
+
+        <div class="bp-layer" onclick="toggleBp('bp-pm')">
+          <div class="bp-label">PLATFORM</div>
+          <div class="bp-block">
+            <div class="bp-block-name">PackageManager · ActivityManager</div>
+            <div class="bp-block-sub">queryIntentActivities · resolveActivity · getApplicationInfo</div>
+          </div>
+        </div>
+        <div class="bp-detail" id="bp-pm">
+          <div class="bp-detail-header">
+            <span class="bp-detail-file">PackageManager query patterns</span>
+            <button class="bp-copy" onclick="event.stopPropagation();bpCopy('bpcode-pm',this)">copy</button>
+          </div>
+          <pre id="bpcode-pm"><span class="cm">// Prefer LauncherApps over direct PM queries — but sometimes you need PM</span>
+<span class="cl">PackageManager</span> pm = <span class="fn">getPackageManager</span>();
+
+<span class="cm">// Query all HOME activities (other launchers)</span>
+<span class="cl">Intent</span> homeIntent = <span class="kw">new</span> <span class="cl">Intent</span>(<span class="cl">Intent</span>.ACTION_MAIN)
+    .<span class="fn">addCategory</span>(<span class="cl">Intent</span>.CATEGORY_HOME);
+<span class="cl">List</span>&lt;<span class="cl">ResolveInfo</span>&gt; launchers =
+    pm.<span class="fn">queryIntentActivities</span>(homeIntent, <span class="num">0</span>);
+
+<span class="cm">// Get app label + icon — cached in IconCache in Launcher3</span>
+<span class="cl">ApplicationInfo</span> info = pm.<span class="fn">getApplicationInfo</span>(pkg, <span class="num">0</span>);
+<span class="cl">CharSequence</span> label = pm.<span class="fn">getApplicationLabel</span>(info);
+<span class="cl">Drawable</span> icon  = pm.<span class="fn">getApplicationIcon</span>(info);
+
+<span class="cm">// API 33+: use PackageManager.getAppMetadata() for extras</span></pre>
+        </div>
+
+        <div class="bp-arrow">↕  System Calls</div>
+
+        <div class="bp-layer" onclick="toggleBp('bp-kernel')">
+          <div class="bp-label">SYSTEM</div>
+          <div class="bp-block">
+            <div class="bp-block-name">WindowManager · SurfaceFlinger</div>
+            <div class="bp-block-sub">Window TYPE_APPLICATION · wallpaper offset · display metrics</div>
+          </div>
+        </div>
+        <div class="bp-detail" id="bp-kernel">
+          <div class="bp-detail-header">
+            <span class="bp-detail-file">WallpaperManager / Window flags</span>
+            <button class="bp-copy" onclick="event.stopPropagation();bpCopy('bpcode-wm',this)">copy</button>
+          </div>
+          <pre id="bpcode-wm"><span class="cm">// Launcher uses wallpaper parallax — must send scroll offsets</span>
+<span class="cl">WallpaperManager</span> wm = <span class="cl">WallpaperManager</span>.<span class="fn">getInstance</span>(context);
+
+<span class="cm">// Called on workspace page scroll — xOffset: 0.0 (left) → 1.0 (right)</span>
+wm.<span class="fn">setWallpaperOffsets</span>(windowToken, xOffset, <span class="num">0.5f</span>);
+
+<span class="cm">// Tell WM how many pages exist (affects parallax magnitude)</span>
+wm.<span class="fn">setWallpaperOffsetSteps</span>(<span class="num">1f</span> / (pageCount - <span class="num">1</span>), <span class="num">1f</span>);
+
+<span class="cm">// Window flags — launcher needs these</span>
+<span class="fn">getWindow</span>().<span class="fn">addFlags</span>(
+    <span class="cl">WindowManager.LayoutParams</span>.FLAG_SHOW_WALLPAPER |
+    <span class="cl">WindowManager.LayoutParams</span>.FLAG_LAYOUT_IN_SCREEN
+);</pre>
+        </div>
+
+      </div>
+    </div>
+
+    <div class="callout">
+      <div class="callout-label">Key Insight</div>
+      Launcher3 introduced <strong>LauncherModel</strong> as a background thread that owns all data loading — it uses a <code>LoaderTask</code> (Runnable) to load workspace, AllApps, and widget data off the main thread, then dispatches results via callbacks. Never touch model data on the UI thread.
+    </div>
+  </section>
+
+  <!-- §2 App Interaction -->
+  <section class="section s2" id="apps">
+    <div class="section-num">§ 02</div>
+    <h2>Interacting with Installed Apps</h2>
+
+    <p>Every icon on your launcher maps to a <strong>WorkspaceItemInfo</strong> (Launcher3) or <strong>ShortcutInfo</strong> (Launcher2). The data pipeline from PackageManager to icon grid is more involved than it looks.</p>
+
+    <h3>The Intent that makes you a launcher</h3>
+    <p>A launcher registers itself in the manifest with a specific intent filter. This is what Android uses to recognize home screen candidates and show the "Set as default" dialog.</p>
+
+    <div class="intent-diagram">
+      <div class="intent-row">
+        <div class="intent-key">action</div>
+        <div class="intent-val"><strong>android.intent.action.MAIN</strong></div>
+      </div>
+      <div class="intent-row">
+        <div class="intent-key">category</div>
+        <div class="intent-val"><strong>android.intent.category.HOME</strong><br>android.intent.category.DEFAULT</div>
+      </div>
+      <div class="intent-row">
+        <div class="intent-key">permission</div>
+        <div class="intent-val"><strong>BIND_APPWIDGET</strong> · READ_EXTERNAL_STORAGE (legacy) · INSTALL_SHORTCUT</div>
+      </div>
+      <div class="intent-row">
+        <div class="intent-key">meta-data</div>
+        <div class="intent-val">android.app.shortcuts · supports_rtl · launcherPrefs</div>
+      </div>
+    </div>
+
+    <h3>WorkspaceItemInfo — the core data object</h3>
+
+    <div class="code-block">
+      <div class="code-header">
+        <span class="code-filename">WorkspaceItemInfo.java (Launcher3)</span>
+        <button class="copy-btn" onclick="copyCode('c-wii', this)">copy</button>
+      </div>
+      <pre id="c-wii"><span class="cm">// WorkspaceItemInfo is what backs every app icon on the grid</span>
+<span class="kw">public class</span> <span class="cl">WorkspaceItemInfo</span> <span class="kw">extends</span> <span class="cl">ItemInfoWithIcon</span> {
+    <span class="cm">// The intent that launches the app — stored in DB</span>
+    <span class="kw">public</span> <span class="cl">Intent</span> intent;
+
+    <span class="cm">// Resolved label + icon (may differ from app-level if custom shortcut)</span>
+    <span class="kw">public</span> <span class="cl">CharSequence</span> title;
+    <span class="kw">public</span> <span class="cl">BitmapInfo</span> bitmap;  <span class="cm">// wraps Bitmap + color</span>
+
+    <span class="cm">// ShortcutInfo backing (API 25+ shortcuts)</span>
+    <span class="kw">public</span> <span class="cl">ShortcutInfo</span> shortcutInfo;
+
+    <span class="cm">// Grid position</span>
+    <span class="kw">public int</span> screenId, cellX, cellY, spanX, spanY;
+
+    <span class="cm">// Container: CONTAINER_DESKTOP, CONTAINER_HOTSEAT, folder id</span>
+    <span class="kw">public long</span> container;
+
+    <span class="cm">// Flags: FLAG_DISABLED_SUSPENDED, FLAG_SUPPORTS_WEB_UI, etc.</span>
+    <span class="kw">public int</span> runtimeStatusFlags;
+}</pre>
+    </div>
+
+    <h3>App loading pipeline</h3>
+    <p>Launcher3's <code>LoaderTask</code> loads in two phases to give the user a fast first paint:</p>
+
+    <div class="code-block">
+      <div class="code-header">
+        <span class="code-filename">LoaderTask.java — simplified flow</span>
+        <button class="copy-btn" onclick="copyCode('c-loader', this)">copy</button>
+      </div>
+      <pre id="c-loader"><span class="cm">// Phase 1: load workspace from DB — fast, runs first</span>
+<span class="kw">private void</span> <span class="fn">loadWorkspace</span>() {
+    <span class="cm">// Read from launcher.db (favorites table)</span>
+    <span class="cl">Cursor</span> c = <span class="fn">queryWorkspace</span>();
+    <span class="kw">while</span> (c.<span class="fn">moveToNext</span>()) {
+        <span class="kw">int</span> itemType = c.<span class="fn">getInt</span>(iconTypeIndex);
+        <span class="kw">switch</span> (itemType) {
+            <span class="kw">case</span> <span class="cl">Favorites</span>.ITEM_TYPE_APPLICATION:
+                info = <span class="fn">getAppShortcutInfo</span>(intent, user, pmHelper);
+                <span class="kw">break</span>;
+            <span class="kw">case</span> <span class="cl">Favorites</span>.ITEM_TYPE_APPWIDGET:
+                info = <span class="fn">getWidgetInfo</span>(appWidgetId);
+                <span class="kw">break</span>;
+            <span class="kw">case</span> <span class="cl">Favorites</span>.ITEM_TYPE_FOLDER:
+                info = <span class="kw">new</span> <span class="cl">FolderInfo</span>();
+                <span class="kw">break</span>;
+        }
+    }
+}
+
+<span class="cm">// Phase 2: load AllApps list — all installed apps</span>
+<span class="kw">private void</span> <span class="fn">loadAllApps</span>() {
+    <span class="cl">List</span>&lt;<span class="cl">LauncherActivityInfo</span>&gt; apps =
+        mLauncherApps.<span class="fn">getActivityList</span>(<span class="kw">null</span>, user);
+
+    <span class="cm">// IconCache fills in labels + icons async, batched by package</span>
+    <span class="kw">for</span> (<span class="cl">LauncherActivityInfo</span> app : apps) {
+        <span class="cl">AppInfo</span> appInfo = <span class="kw">new</span> <span class="cl">AppInfo</span>(app, user, isQuietModeEnabled);
+        mIconCache.<span class="fn">getTitleAndIcon</span>(appInfo, app, <span class="kw">false</span>);
+        mBgAllAppsList.<span class="fn">add</span>(appInfo);
+    }
+}</pre>
+    </div>
+
+    <h3>Responding to package events in real time</h3>
+    <div class="code-block">
+      <div class="code-header">
+        <span class="code-filename">PackageUpdatedTask.java</span>
+        <button class="copy-btn" onclick="copyCode('c-pkg', this)">copy</button>
+      </div>
+      <pre id="c-pkg"><span class="cm">// Launcher3 handles package changes via a dedicated task</span>
+<span class="cm">// This runs on the model thread (not main thread)</span>
+<span class="kw">public class</span> <span class="cl">PackageUpdatedTask</span> <span class="kw">extends</span> <span class="cl">BaseModelUpdateTask</span> {
+
+    <span class="kw">private final int</span> mOp; <span class="cm">// OP_ADD, OP_REMOVE, OP_UPDATE, OP_SUSPEND</span>
+
+    <span class="an">@Override</span>
+    <span class="kw">public void</span> <span class="fn">execute</span>(<span class="cl">LauncherAppState</span> app, <span class="cl">BgDataModel</span> dataModel, ...) {
+        <span class="kw">switch</span> (mOp) {
+            <span class="kw">case</span> OP_ADD:
+                <span class="cm">// Add to AllApps, predict if ML model suggests it</span>
+                dataModel.allAppsList.<span class="fn">addPackage</span>(context, packageName, user);
+                <span class="kw">break</span>;
+            <span class="kw">case</span> OP_REMOVE:
+                <span class="cm">// Remove icons, clean workspace, remove from DB</span>
+                <span class="fn">deleteAndBindComponentsRemoved</span>(removedComponents);
+                <span class="kw">break</span>;
+            <span class="kw">case</span> OP_UPDATE:
+                <span class="cm">// Re-fetch icon, label — clear IconCache entry first</span>
+                mIconCache.<span class="fn">invalidateCacheEntries</span>(packageName, user);
+                <span class="fn">updateWorkspaceItems</span>(updatedItems);
+                <span class="kw">break</span>;
+        }
+    }
+}</pre>
+    </div>
+
+    <div class="callout tip">
+      <div class="callout-label">Performance Note</div>
+      <strong>IconCache</strong> is one of the most critical components for a smooth launcher. It uses a two-level cache: an in-memory LRU (BitmapInfo objects) and a persistent SQLite-backed icon DB (<code>app_icons.db</code>). Always invalidate stale entries before re-querying; a stale icon DB is a common source of launch-time lag.
+    </div>
+  </section>
+
+  <!-- §3 Widgets -->
+  <section class="section s3" id="widgets">
+    <div class="section-num">§ 03</div>
+    <h2>Widget System Internals</h2>
+
+    <p>Widgets are the most complex part of any launcher. They run in a <strong>remote process</strong>, communicate via <strong>RemoteViews</strong>, and require the launcher to be a trusted <code>AppWidgetHost</code>.</p>
+
+    <div class="widget-grid">
+      <div class="widget-card">
+        <div class="wc-title">AppWidgetHost</div>
+        <div class="wc-desc">Lives in your launcher process. Creates <code>AppWidgetHostView</code> containers and owns the communication channel with AppWidgetService via Binder.</div>
+      </div>
+      <div class="widget-card">
+        <div class="wc-title">AppWidgetProvider</div>
+        <div class="wc-desc">BroadcastReceiver in the widget's app. Sends <code>RemoteViews</code> to AppWidgetService, which relays to your Host.</div>
+      </div>
+      <div class="widget-card">
+        <div class="wc-title">AppWidgetService</div>
+        <div class="wc-desc">System service (IPC boundary). Mediates between Host and Provider, manages widget IDs, and handles bind/unbind lifecycle.</div>
+      </div>
+      <div class="widget-card">
+        <div class="wc-title">RemoteViews</div>
+        <div class="wc-desc">Parcelable view tree. Can only use a subset of Views (TextView, ImageView, etc.) — no custom views, no direct touch listeners.</div>
+      </div>
+    </div>
+
+    <div class="code-block">
+      <div class="code-header">
+        <span class="code-filename">LauncherAppWidgetHost.java</span>
+        <button class="copy-btn" onclick="copyCode('c-host', this)">copy</button>
+      </div>
+      <pre id="c-host"><span class="cm">// Always use a fixed HOST_ID — widgets are bound to it in DB</span>
+<span class="kw">public static final int</span> APPWIDGET_HOST_ID = <span class="num">1024</span>;
+
+<span class="kw">public class</span> <span class="cl">LauncherAppWidgetHost</span> <span class="kw">extends</span> <span class="cl">AppWidgetHost</span> {
+
+    <span class="kw">public</span> <span class="cl">LauncherAppWidgetHost</span>(<span class="cl">Context</span> context) {
+        <span class="kw">super</span>(context, APPWIDGET_HOST_ID);
+    }
+
+    <span class="an">@Override</span>
+    <span class="kw">protected</span> <span class="cl">AppWidgetHostView</span> <span class="fn">onCreateView</span>(<span class="cl">Context</span> context,
+            <span class="kw">int</span> appWidgetId, <span class="cl">AppWidgetProviderInfo</span> appWidget) {
+        <span class="cm">// Return custom view — add drag handles, resize frames, etc.</span>
+        <span class="kw">return new</span> <span class="cl">LauncherAppWidgetHostView</span>(context);
+    }
+
+    <span class="an">@Override</span>
+    <span class="kw">public void</span> <span class="fn">onProvidersChanged</span>() {
+        <span class="cm">// Widget providers installed/removed — refresh picker</span>
+        mLauncher.<span class="fn">notifyWidgetProvidersChanged</span>();
+    }
+}
+
+<span class="cm">// Lifecycle — CRITICAL: start/stop must be symmetric</span>
+<span class="kw">void</span> <span class="fn">onResume</span>()  { mAppWidgetHost.<span class="fn">startListening</span>(); }
+<span class="kw">void</span> <span class="fn">onPause</span>()   { mAppWidgetHost.<span class="fn">stopListening</span>(); }
+<span class="kw">void</span> <span class="fn">onDestroy</span>() {
+    <span class="cm">// Only call deleteHost() if you want to remove ALL bound widgets</span>
+    <span class="cm">// Usually you DON'T — just stopListening()</span>
+}</pre>
+    </div>
+
+    <h3>Binding a widget — the full flow</h3>
+    <div class="code-block">
+      <div class="code-header">
+        <span class="code-filename">WidgetAddFlowHandler.java</span>
+        <button class="copy-btn" onclick="copyCode('c-bind', this)">copy</button>
+      </div>
+      <pre id="c-bind"><span class="cm">// Step 1: allocate a widget ID</span>
+<span class="kw">int</span> appWidgetId = mAppWidgetHost.<span class="fn">allocateAppWidgetId</span>();
+
+<span class="cm">// Step 2: attempt to bind (requires BIND_APPWIDGET permission)</span>
+<span class="cl">AppWidgetManager</span> awm = <span class="cl">AppWidgetManager</span>.<span class="fn">getInstance</span>(context);
+<span class="kw">boolean</span> bindAllowed = awm.<span class="fn">bindAppWidgetIdIfAllowed</span>(
+    appWidgetId, providerInfo.provider
+);
+
+<span class="kw">if</span> (!bindAllowed) {
+    <span class="cm">// User hasn't granted permission — launch system dialog</span>
+    <span class="cl">Intent</span> intent = <span class="kw">new</span> <span class="cl">Intent</span>(<span class="cl">AppWidgetManager</span>.ACTION_APPWIDGET_BIND)
+        .<span class="fn">putExtra</span>(<span class="cl">AppWidgetManager</span>.EXTRA_APPWIDGET_ID, appWidgetId)
+        .<span class="fn">putExtra</span>(<span class="cl">AppWidgetManager</span>.EXTRA_APPWIDGET_PROVIDER, providerInfo.provider);
+    <span class="fn">startActivityForResult</span>(intent, REQUEST_BIND_APPWIDGET);
+}
+
+<span class="cm">// Step 3: check if widget needs configuration Activity</span>
+<span class="kw">if</span> (providerInfo.configure != <span class="kw">null</span>) {
+    <span class="cl">Intent</span> configIntent = <span class="kw">new</span> <span class="cl">Intent</span>(<span class="cl">AppWidgetManager</span>.ACTION_APPWIDGET_CONFIGURE)
+        .<span class="fn">setComponent</span>(providerInfo.configure)
+        .<span class="fn">putExtra</span>(<span class="cl">AppWidgetManager</span>.EXTRA_APPWIDGET_ID, appWidgetId);
+    <span class="fn">startActivityForResult</span>(configIntent, REQUEST_CREATE_APPWIDGET);
+}
+
+<span class="cm">// Step 4: inflate and add to workspace</span>
+<span class="cl">AppWidgetHostView</span> hostView = mAppWidgetHost.<span class="fn">createView</span>(context, appWidgetId, providerInfo);
+mWorkspace.<span class="fn">addInScreen</span>(hostView, itemInfo);</pre>
+    </div>
+
+    <div class="callout warn">
+      <div class="callout-label">Common Pitfall</div>
+      Always call <strong>deleteAppWidgetId()</strong> on IDs you allocated but couldn't bind — orphaned widget IDs accumulate in the system's widget registry and are never garbage collected. On devices with many launcher installs/uninstalls this becomes a real problem.
+    </div>
+  </section>
+
+  <!-- §4 Workspace & Drag -->
+  <section class="section s4" id="workspace">
+    <div class="section-num">§ 04</div>
+    <h2>Workspace, DragLayer & CellLayout</h2>
+
+    <p>The workspace is a <strong>PagedView</strong> (horizontal scroll) containing multiple <strong>CellLayout</strong> pages. Every item on screen is placed into a cell grid — the grid math is non-trivial once you account for folders, spans, and RTL.</p>
+
+    <table class="schematic-table">
+      <thead>
+        <tr>
+          <th>Component</th>
+          <th>Role</th>
+          <th>Key methods</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>DragLayer</td>
+          <td>Full-screen overlay. Intercepts all touch events during drag. Hosts drag preview ("drag view").</td>
+          <td>performDrag · animateViewIntoPosition · getDescendantRectRelativeToSelf</td>
+        </tr>
+        <tr>
+          <td>Workspace</td>
+          <td>PagedView subclass. Manages pages, handles drop targets, owns item-to-page mapping.</td>
+          <td>addInScreen · removeItemFromScreen · snapToPage · getPageAt</td>
+        </tr>
+        <tr>
+          <td>CellLayout</td>
+          <td>One page of the workspace grid. Manages cell occupancy, reorder animations.</td>
+          <td>findCellForSpan · addViewToCellLayout · animateChildToPosition · markCellsAsOccupied</td>
+        </tr>
+        <tr>
+          <td>ShortcutAndWidgetContainer</td>
+          <td>Direct parent of all icons + widgets within a CellLayout. Handles measure/layout with cell math.</td>
+          <td>getChildAt(cellX, cellY) · measureChild · layoutDecorated</td>
+        </tr>
+        <tr>
+          <td>Hotseat</td>
+          <td>Bottom persistent row. Single CellLayout with rank-based ordering.</td>
+          <td>getLayout · mHotseatGrid · isHotseatLayout</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h3>Cell position math</h3>
+    <div class="code-block">
+      <div class="code-header">
+        <span class="code-filename">CellLayout.java — cell coordinate helpers</span>
+        <button class="copy-btn" onclick="copyCode('c-cell', this)">copy</button>
+      </div>
+      <pre id="c-cell"><span class="cm">// Convert pixel coordinates → cell coordinates</span>
+<span class="kw">public void</span> <span class="fn">pointToCellExact</span>(<span class="kw">int</span> x, <span class="kw">int</span> y, <span class="kw">int</span>[] result) {
+    <span class="kw">final int</span> hStartPadding = <span class="fn">getPaddingLeft</span>();
+    <span class="kw">final int</span> vStartPadding = <span class="fn">getPaddingTop</span>();
+    result[<span class="num">0</span>] = (x - hStartPadding) / (mCellWidth  + mWidthGap);
+    result[<span class="num">1</span>] = (y - vStartPadding) / (mCellHeight + mHeightGap);
+    <span class="cm">// Clamp to grid bounds</span>
+    result[<span class="num">0</span>] = <span class="cl">Math</span>.<span class="fn">max</span>(<span class="num">0</span>, <span class="cl">Math</span>.<span class="fn">min</span>(result[<span class="num">0</span>], mCountX - <span class="num">1</span>));
+    result[<span class="num">1</span>] = <span class="cl">Math</span>.<span class="fn">max</span>(<span class="num">0</span>, <span class="cl">Math</span>.<span class="fn">min</span>(result[<span class="num">1</span>], mCountY - <span class="num">1</span>));
+}
+
+<span class="cm">// Find a free cell for an item of given span</span>
+<span class="kw">public boolean</span> <span class="fn">findCellForSpan</span>(<span class="kw">int</span>[] cellXY, <span class="kw">int</span> spanX, <span class="kw">int</span> spanY) {
+    <span class="kw">return</span> <span class="fn">findCellForSpanThatIntersects</span>(cellXY, spanX, spanY, -<span class="num">1</span>, -<span class="num">1</span>);
+}
+
+<span class="cm">// Check if a region is occupied</span>
+<span class="kw">public boolean</span> <span class="fn">isRegionVacant</span>(<span class="kw">int</span> x, <span class="kw">int</span> y, <span class="kw">int</span> spanX, <span class="kw">int</span> spanY) {
+    <span class="kw">for</span> (<span class="kw">int</span> i = x; i &lt; x + spanX; i++) {
+        <span class="kw">for</span> (<span class="kw">int</span> j = y; j &lt; y + spanY; j++) {
+            <span class="kw">if</span> (mOccupied[i][j]) <span class="kw">return false</span>;
+        }
+    }
+    <span class="kw">return true</span>;
+}</pre>
+    </div>
+
+    <h3>Drag & Drop lifecycle</h3>
+    <div class="code-block">
+      <div class="code-header">
+        <span class="code-filename">DragController.java — key events</span>
+        <button class="copy-btn" onclick="copyCode('c-drag', this)">copy</button>
+      </div>
+      <pre id="c-drag"><span class="cm">// Start a drag — called on long-press via ItemLongClickListener</span>
+<span class="kw">public</span> <span class="cl">DragView</span> <span class="fn">startDrag</span>(<span class="cl">View</span> v, <span class="cl">DragSource</span> source, ...) {
+    <span class="cm">// 1. Create bitmap snapshot of the view</span>
+    <span class="cl">Bitmap</span> dragBitmap = <span class="cl">BitmapRenderer</span>.<span class="fn">createHardwareBitmap</span>(v);
+    <span class="cm">// 2. Inflate DragView (the floating preview)</span>
+    mDragView = <span class="kw">new</span> <span class="cl">DragView</span>(mLauncher, dragBitmap, registrationX, registrationY);
+    mDragView.<span class="fn">show</span>(initialX, initialY);
+    <span class="cm">// 3. Hide original, dispatch onDragStart to all listeners</span>
+    v.<span class="fn">setVisibility</span>(<span class="cl">View</span>.INVISIBLE);
+    <span class="fn">dispatchDragStart</span>(mDragging, dragAction);
+    <span class="kw">return</span> mDragView;
+}
+
+<span class="cm">// DragListener implemented by Workspace, Hotseat, DeleteDropTarget, etc.</span>
+<span class="kw">interface</span> <span class="cl">DropTarget</span> {
+    <span class="kw">void</span> <span class="fn">onDragEnter</span>(<span class="cl">DragObject</span> d);
+    <span class="kw">void</span> <span class="fn">onDragOver</span>(<span class="cl">DragObject</span> d);   <span class="cm">// real-time hover feedback</span>
+    <span class="kw">void</span> <span class="fn">onDragExit</span>(<span class="cl">DragObject</span> d);
+    <span class="kw">boolean</span> <span class="fn">acceptDrop</span>(<span class="cl">DragObject</span> d); <span class="cm">// can this target accept the item?</span>
+    <span class="kw">void</span> <span class="fn">onDrop</span>(<span class="cl">DragObject</span> d, <span class="cl">DragOptions</span> options);
+}</pre>
+    </div>
+
+    <div class="callout">
+      <div class="callout-label">Architecture Note</div>
+      In Launcher3, the <strong>DragLayer</strong> is the single coordinator for all drag operations — not the individual pages. This is why touch events during drag must be funneled through it even if the visual target is in a different CellLayout. When building custom drop targets (e.g. a custom folder type or app drawer zone), implement <code>DropTarget</code> and register with <code>DragController.addDropTarget()</code>.
+    </div>
+
+    <!-- Launcher DB schema -->
+    <h3>launcher.db — favorites table</h3>
+    <p>Everything on the workspace persists to a SQLite DB. Understanding the schema is essential for migration work and for writing tools that pre-populate launcher layouts (OEM provisioning).</p>
+
+    <table class="schematic-table">
+      <thead>
+        <tr><th>Column</th><th>Type</th><th>Purpose</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>_id</td><td>INTEGER PK</td><td>Unique item ID, referenced by widget host</td></tr>
+        <tr><td>title</td><td>TEXT</td><td>Label — null means use app label from PM</td></tr>
+        <tr><td>intent</td><td>TEXT</td><td>Serialized Intent URI (Intent.toUri / parseUri)</td></tr>
+        <tr><td>container</td><td>INTEGER</td><td>-100 = desktop, -101 = hotseat, else = folder _id</td></tr>
+        <tr><td>screen</td><td>INTEGER</td><td>Page index (0-based)</td></tr>
+        <tr><td>cellX / cellY</td><td>INTEGER</td><td>Grid position within the screen</td></tr>
+        <tr><td>spanX / spanY</td><td>INTEGER</td><td>Widget span (1×1 for icons)</td></tr>
+        <tr><td>itemType</td><td>INTEGER</td><td>1=app, 2=shortcut, 4=widget, 6=folder</td></tr>
+        <tr><td>appWidgetId</td><td>INTEGER</td><td>System-allocated widget ID (-1 for non-widgets)</td></tr>
+        <tr><td>profileId</td><td>INTEGER</td><td>UserHandle serial — for work profile icons</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- Back + footer -->
+  <a class="back-link" href="index.html">← back to index</a>
+
+  <footer>
+    <span>AOSP Launcher Internals · Deep Reference</span>
+    <span>Launcher2 · Launcher3 · API 21–35</span>
+  </footer>
+
+</div>
+
+<script>
+  // Blueprint layer toggle
+  function toggleBp(id) {
+    const el = document.getElementById(id);
+    const layer = el.previousElementSibling;
+    const isOpen = el.classList.contains('open');
+    document.querySelectorAll('.bp-detail.open').forEach(d => {
+      d.classList.remove('open');
+      d.previousElementSibling.classList.remove('active');
+    });
+    if (!isOpen) {
+      el.classList.add('open');
+      layer.classList.add('active');
+    }
+  }
+
+  // Blueprint copy
+  function bpCopy(id, btn) {
+    const text = document.getElementById(id).innerText;
+    navigator.clipboard.writeText(text).then(() => {
+      btn.textContent = 'copied ✓';
+      btn.classList.add('copied');
+      setTimeout(() => { btn.textContent = 'copy'; btn.classList.remove('copied'); }, 1800);
+    });
+  }
+
+  // Light code block copy
+  function copyCode(id, btn) {
+    const text = document.getElementById(id).innerText;
+    navigator.clipboard.writeText(text).then(() => {
+      btn.textContent = 'copied ✓';
+      btn.classList.add('copied');
+      setTimeout(() => { btn.textContent = 'copy'; btn.classList.remove('copied'); }, 1800);
+    });
+  }
+</script>
+
+</body>
+</html>
