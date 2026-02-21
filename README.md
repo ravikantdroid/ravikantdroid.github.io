@@ -8,6 +8,7 @@ Personal dev reference site — quick lookups, patterns, and notes I actually us
 |------|-------------|
 | [Android Clean Architecture](./android-arch-ref.html) | Interactive MVVM + Clean Arch reference with copy-ready Kotlin snippets |
 | [AOSP Launcher Internals](./launcher-ref.html) | Deep-dive: LauncherApps, WorkspaceItemInfo, AppWidgetHost, CellLayout, DragController, launcher.db |
+| [Design Thinking](./design-thinking-ref,html) | PRODUCT THINKING · UX · OBSERVATION · Users Behaviour |
 
 More coming: Flutter state management, TFLite integration, coroutines patterns.
 
