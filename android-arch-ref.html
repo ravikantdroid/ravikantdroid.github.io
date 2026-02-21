@@ -1,0 +1,926 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Android Clean Arch · Quick Reference</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Syne:wght@400;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0d0f14;
+    --surface: #13161d;
+    --surface2: #1a1e28;
+    --border: #252a38;
+    --accent: #4fffb0;
+    --accent2: #6e8cff;
+    --accent3: #ff6b6b;
+    --accent4: #ffd166;
+    --text: #e2e8f0;
+    --muted: #64748b;
+    --layer-ui: #4fffb0;
+    --layer-vm: #6e8cff;
+    --layer-uc: #ffd166;
+    --layer-repo: #ff8c42;
+    --layer-ds: #ff6b6b;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Syne', sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Animated grid background */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: 
+      linear-gradient(rgba(78,255,176,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(78,255,176,0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .container {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 2rem 1.5rem 4rem;
+    position: relative;
+    z-index: 1;
+  }
+
+  header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    margin-bottom: 3rem;
+    gap: 1rem;
+    flex-wrap: wrap;
+  }
+
+  .header-left h1 {
+    font-size: clamp(1.8rem, 4vw, 2.8rem);
+    font-weight: 800;
+    line-height: 1.1;
+    letter-spacing: -0.03em;
+  }
+
+  .header-left h1 span {
+    color: var(--accent);
+    display: block;
+  }
+
+  .header-left p {
+    color: var(--muted);
+    margin-top: 0.5rem;
+    font-size: 0.95rem;
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  .badge {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 0.3rem 0.75rem;
+    font-size: 0.75rem;
+    font-family: 'JetBrains Mono', monospace;
+    color: var(--accent);
+    white-space: nowrap;
+    align-self: flex-start;
+    margin-top: 0.3rem;
+  }
+
+  /* Layer Flow Diagram */
+  .arch-diagram {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    margin-bottom: 2.5rem;
+    position: relative;
+  }
+
+  .arch-diagram::before {
+    content: 'DATA FLOW ↕';
+    position: absolute;
+    right: -0.5rem;
+    top: 50%;
+    transform: translateY(-50%) rotate(90deg);
+    font-size: 0.6rem;
+    letter-spacing: 0.15em;
+    color: var(--muted);
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  .layer {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 1rem 1.25rem;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .layer:first-child { border-radius: 10px 10px 0 0; }
+  .layer:last-child { border-radius: 0 0 10px 10px; }
+  .layer + .layer { border-top: none; }
+
+  .layer::before {
+    content: '';
+    position: absolute;
+    left: 0; top: 0; bottom: 0;
+    width: 3px;
+  }
+
+  .layer-ui::before { background: var(--layer-ui); }
+  .layer-vm::before { background: var(--layer-vm); }
+  .layer-uc::before { background: var(--layer-uc); }
+  .layer-repo::before { background: var(--layer-repo); }
+  .layer-ds::before { background: var(--layer-ds); }
+
+  .layer:hover, .layer.active {
+    background: var(--surface2);
+  }
+  .layer.active { border-color: rgba(255,255,255,0.1); }
+
+  .layer-dot {
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .layer-ui .layer-dot { background: var(--layer-ui); box-shadow: 0 0 8px var(--layer-ui); }
+  .layer-vm .layer-dot { background: var(--layer-vm); box-shadow: 0 0 8px var(--layer-vm); }
+  .layer-uc .layer-dot { background: var(--layer-uc); box-shadow: 0 0 8px var(--layer-uc); }
+  .layer-repo .layer-dot { background: var(--layer-repo); box-shadow: 0 0 8px var(--layer-repo); }
+  .layer-ds .layer-dot { background: var(--layer-ds); box-shadow: 0 0 8px var(--layer-ds); }
+
+  .layer-name {
+    font-weight: 700;
+    font-size: 0.9rem;
+    flex: 1;
+  }
+
+  .layer-tech {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.7rem;
+    color: var(--muted);
+  }
+
+  .layer-arrow {
+    font-size: 0.8rem;
+    color: var(--muted);
+    transition: transform 0.2s;
+  }
+  .layer.active .layer-arrow { transform: rotate(90deg); }
+
+  /* Code Panel */
+  .code-panel {
+    display: none;
+    margin-bottom: 1.5rem;
+    animation: slideIn 0.2s ease;
+  }
+  .code-panel.visible { display: block; }
+
+  @keyframes slideIn {
+    from { opacity: 0; transform: translateY(-8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .code-block {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+  }
+
+  .code-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.6rem 1rem;
+    border-bottom: 1px solid var(--border);
+    background: rgba(255,255,255,0.02);
+  }
+
+  .code-filename {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.75rem;
+    color: var(--accent2);
+  }
+
+  .copy-btn {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.7rem;
+    padding: 0.2rem 0.6rem;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .copy-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .copy-btn.copied { border-color: var(--accent); color: var(--accent); }
+
+  pre {
+    padding: 1.25rem;
+    overflow-x: auto;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.8rem;
+    line-height: 1.7;
+  }
+
+  .desc-panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 1.25rem;
+    margin-bottom: 1rem;
+    font-size: 0.9rem;
+    line-height: 1.6;
+    color: #94a3b8;
+  }
+  .desc-panel strong { color: var(--text); }
+
+  /* Keyword highlighting via spans */
+  .kw { color: #7c6af5; }
+  .fn { color: #4fffb0; }
+  .cl { color: #6e8cff; }
+  .str { color: #ffd166; }
+  .cm { color: #445566; }
+  .an { color: #ff8c42; }
+  .ty { color: #ff8c42; }
+
+  /* Patterns grid */
+  .section-title {
+    font-size: 1rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin: 2.5rem 0 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+  }
+  .section-title::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+
+  .patterns-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 1rem;
+    margin-bottom: 2rem;
+  }
+
+  .pattern-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+    cursor: pointer;
+    transition: border-color 0.2s, transform 0.15s;
+  }
+  .pattern-card:hover { border-color: rgba(255,255,255,0.15); transform: translateY(-2px); }
+
+  .pattern-header {
+    padding: 0.9rem 1rem 0.6rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .pattern-icon { font-size: 1rem; }
+  .pattern-name { font-weight: 700; font-size: 0.85rem; }
+  .pattern-tag {
+    margin-left: auto;
+    font-size: 0.65rem;
+    font-family: 'JetBrains Mono', monospace;
+    padding: 0.15rem 0.5rem;
+    border-radius: 3px;
+  }
+  .tag-kotlin { background: rgba(110,140,255,0.15); color: var(--accent2); }
+  .tag-flutter { background: rgba(78,255,176,0.1); color: var(--accent); }
+  .tag-ml { background: rgba(255,107,107,0.15); color: var(--accent3); }
+
+  .pattern-preview {
+    padding: 0.75rem 1rem;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.72rem;
+    line-height: 1.5;
+    color: var(--muted);
+    white-space: pre;
+    overflow: hidden;
+    max-height: 80px;
+  }
+
+  .pattern-detail {
+    display: none;
+    border-top: 1px solid var(--border);
+  }
+  .pattern-detail.open { display: block; animation: slideIn 0.2s ease; }
+
+  /* AI/ML section */
+  .ml-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-bottom: 1.5rem;
+  }
+  .ml-chip {
+    padding: 0.4rem 0.9rem;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    font-family: 'JetBrains Mono', monospace;
+    cursor: pointer;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    transition: all 0.15s;
+  }
+  .ml-chip:hover, .ml-chip.active { background: var(--surface2); border-color: var(--accent3); color: var(--accent3); }
+
+  /* Flow viz */
+  .flow-viz {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    padding: 1rem 1.25rem;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    margin-bottom: 1.5rem;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.75rem;
+  }
+  .flow-node {
+    padding: 0.25rem 0.65rem;
+    border-radius: 4px;
+    font-size: 0.72rem;
+    white-space: nowrap;
+  }
+  .flow-arrow { color: var(--muted); }
+
+  footer {
+    margin-top: 3rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--border);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.72rem;
+    color: var(--muted);
+    display: flex;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <header>
+    <div class="header-left">
+      <h1>Clean Architecture<span>Quick Reference</span></h1>
+      <p>// Android · Kotlin · MVVM · 2025</p>
+    </div>
+    <div class="badge">senior_ref_v3</div>
+  </header>
+
+  <!-- Architecture Layer Stack -->
+  <div class="section-title">Layer Stack — click to expand</div>
+
+  <div class="arch-diagram" id="layerStack">
+
+    <div class="layer layer-ui" onclick="toggleLayer('ui')">
+      <div class="layer-dot"></div>
+      <div class="layer-name">UI Layer</div>
+      <div class="layer-tech">Fragment · ViewBinding · Activity</div>
+      <div class="layer-arrow">›</div>
+    </div>
+    <div class="code-panel" id="panel-ui">
+      <div style="height:0.5rem; background: var(--bg);"></div>
+      <div class="desc-panel">
+        <strong>Fragment observes StateFlow</strong> from ViewModel — never calls UseCases directly. Use <strong>repeatOnLifecycle(STARTED)</strong> for safe collection; it fully cancels the coroutine on stop (unlike <code>launchWhenStarted</code>). Always null out ViewBinding in <strong>onDestroyView</strong>.
+      </div>
+      <div class="code-block">
+        <div class="code-header">
+          <span class="code-filename">HomeFragment.kt</span>
+          <button class="copy-btn" onclick="copyCode('code-ui', this)">copy</button>
+        </div>
+        <pre id="code-ui"><span class="kw">class</span> <span class="cl">HomeFragment</span> : <span class="cl">Fragment</span>(<span class="cl">R</span>.layout.fragment_home) {
+
+    <span class="kw">private val</span> viewModel: <span class="cl">HomeViewModel</span> <span class="kw">by</span> <span class="fn">viewModels</span>()
+    <span class="kw">private var</span> _binding: <span class="cl">FragmentHomeBinding</span>? = <span class="kw">null</span>
+    <span class="kw">private val</span> binding <span class="kw">get</span>() = _binding!!
+
+    <span class="kw">override fun</span> <span class="fn">onViewCreated</span>(view: <span class="cl">View</span>, savedInstanceState: <span class="cl">Bundle</span>?) {
+        <span class="kw">super</span>.<span class="fn">onViewCreated</span>(view, savedInstanceState)
+        _binding = <span class="cl">FragmentHomeBinding</span>.<span class="fn">bind</span>(view)
+
+        <span class="fn">observeState</span>()
+
+        <span class="cm">// Trigger actions — no business logic here</span>
+        binding.btnRefresh.<span class="fn">setOnClickListener</span> { viewModel.<span class="fn">onRefresh</span>() }
+    }
+
+    <span class="kw">private fun</span> <span class="fn">observeState</span>() {
+        <span class="cm">// repeatOnLifecycle cancels on STOP, resumes on START</span>
+        <span class="cm">// safer than launchWhenStarted which only suspends</span>
+        viewLifecycleOwner.lifecycleScope.<span class="fn">launch</span> {
+            <span class="fn">repeatOnLifecycle</span>(<span class="cl">Lifecycle.State.STARTED</span>) {
+                viewModel.uiState.<span class="fn">collect</span> { state ->
+                    <span class="kw">when</span> (state) {
+                        <span class="kw">is</span> <span class="cl">UiState.Loading</span> -> <span class="fn">showLoading</span>()
+                        <span class="kw">is</span> <span class="cl">UiState.Success</span> -> <span class="fn">renderUsers</span>(state.data)
+                        <span class="kw">is</span> <span class="cl">UiState.Error</span>   -> <span class="fn">showError</span>(state.message)
+                    }
+                }
+            }
+        }
+    }
+
+    <span class="kw">override fun</span> <span class="fn">onDestroyView</span>() {
+        <span class="kw">super</span>.<span class="fn">onDestroyView</span>()
+        _binding = <span class="kw">null</span>  <span class="cm">// avoid memory leaks with ViewBinding</span>
+    }
+}</pre>
+      </div>
+    </div>
+
+    <div class="layer layer-vm" onclick="toggleLayer('vm')">
+      <div class="layer-dot"></div>
+      <div class="layer-name">ViewModel</div>
+      <div class="layer-tech">StateFlow · viewModelScope · Hilt</div>
+      <div class="layer-arrow">›</div>
+    </div>
+    <div class="code-panel" id="panel-vm">
+      <div style="height:0.5rem; background: var(--bg);"></div>
+      <div class="desc-panel">
+        ViewModel owns <strong>UI state</strong>, coordinates UseCases, handles lifecycle. Never import Android UI framework — keeps it testable. Use <strong>sealed classes</strong> for exhaustive state.
+      </div>
+      <div class="code-block">
+        <div class="code-header">
+          <span class="code-filename">HomeViewModel.kt</span>
+          <button class="copy-btn" onclick="copyCode('code-vm', this)">copy</button>
+        </div>
+        <pre id="code-vm"><span class="an">@HiltViewModel</span>
+<span class="kw">class</span> <span class="cl">HomeViewModel</span> <span class="an">@Inject</span> <span class="kw">constructor</span>(
+    <span class="kw">private val</span> getUsersUseCase: <span class="cl">GetUsersUseCase</span>
+) : <span class="cl">ViewModel</span>() {
+
+    <span class="kw">private val</span> _uiState = <span class="fn">MutableStateFlow</span>&lt;<span class="cl">UiState</span>&gt;(<span class="cl">UiState.Loading</span>)
+    <span class="kw">val</span> uiState: <span class="cl">StateFlow</span>&lt;<span class="cl">UiState</span>&gt; = _uiState.<span class="fn">asStateFlow</span>()
+
+    <span class="kw">init</span> { <span class="fn">loadUsers</span>() }
+
+    <span class="kw">fun</span> <span class="fn">onRefresh</span>() = <span class="fn">loadUsers</span>()
+
+    <span class="kw">private fun</span> <span class="fn">loadUsers</span>() {
+        viewModelScope.<span class="fn">launch</span> {
+            _uiState.<span class="fn">emit</span>(<span class="cl">UiState.Loading</span>)
+            getUsersUseCase()
+                .<span class="fn">onSuccess</span> { _uiState.<span class="fn">emit</span>(<span class="cl">UiState.Success</span>(it)) }
+                .<span class="fn">onFailure</span> { _uiState.<span class="fn">emit</span>(<span class="cl">UiState.Error</span>(it.message)) }
+        }
+    }
+}
+
+<span class="kw">sealed class</span> <span class="cl">UiState</span> {
+    <span class="kw">data object</span> <span class="cl">Loading</span> : <span class="cl">UiState</span>()
+    <span class="kw">data class</span>  <span class="cl">Success</span>(<span class="kw">val</span> data: <span class="cl">List</span>&lt;<span class="cl">User</span>&gt;) : <span class="cl">UiState</span>()
+    <span class="kw">data class</span>  <span class="cl">Error</span>(<span class="kw">val</span> message: <span class="cl">String</span>?) : <span class="cl">UiState</span>()
+}</pre>
+      </div>
+    </div>
+
+    <div class="layer layer-uc" onclick="toggleLayer('uc')">
+      <div class="layer-dot"></div>
+      <div class="layer-name">Use Case / Interactor</div>
+      <div class="layer-tech">Single-responsibility · Pure Kotlin · Testable</div>
+      <div class="layer-arrow">›</div>
+    </div>
+    <div class="code-panel" id="panel-uc">
+      <div style="height:0.5rem; background: var(--bg);"></div>
+      <div class="desc-panel">
+        One action per class. <strong>operator fun invoke()</strong> = clean call site. No Android dependencies. Test in pure JUnit — no Robolectric needed.
+      </div>
+      <div class="code-block">
+        <div class="code-header">
+          <span class="code-filename">GetUsersUseCase.kt</span>
+          <button class="copy-btn" onclick="copyCode('code-uc', this)">copy</button>
+        </div>
+        <pre id="code-uc"><span class="kw">class</span> <span class="cl">GetUsersUseCase</span> <span class="an">@Inject</span> <span class="kw">constructor</span>(
+    <span class="kw">private val</span> repository: <span class="cl">UserRepository</span>
+) {
+    <span class="kw">suspend operator fun</span> <span class="fn">invoke</span>(): <span class="cl">Result</span>&lt;<span class="cl">List</span>&lt;<span class="cl">User</span>&gt;&gt; =
+        repository.<span class="fn">getUsers</span>()
+            .<span class="fn">map</span> { users -> users.<span class="fn">sortedBy</span> { it.name } }
+
+    <span class="cm">// Composing multiple repos? Easy:</span>
+    <span class="cm">// val prefs = prefsRepo.getUserPrefs()</span>
+    <span class="cm">// return combine(usersResult, prefs) { ... }</span>
+}</pre>
+      </div>
+    </div>
+
+    <div class="layer layer-repo" onclick="toggleLayer('repo')">
+      <div class="layer-dot"></div>
+      <div class="layer-name">Repository</div>
+      <div class="layer-tech">Interface (domain) · Impl (data) · Single source of truth</div>
+      <div class="layer-arrow">›</div>
+    </div>
+    <div class="code-panel" id="panel-repo">
+      <div style="height:0.5rem; background: var(--bg);"></div>
+      <div class="desc-panel">
+        Interface lives in <strong>domain</strong>, implementation in <strong>data</strong>. Repo decides: emit from cache → fetch remote → update Room → re-emit. Classic offline-first with <strong>Flow</strong>.
+      </div>
+      <div class="code-block">
+        <div class="code-header">
+          <span class="code-filename">UserRepositoryImpl.kt</span>
+          <button class="copy-btn" onclick="copyCode('code-repo', this)">copy</button>
+        </div>
+        <pre id="code-repo"><span class="cm">// domain/repository/UserRepository.kt</span>
+<span class="kw">interface</span> <span class="cl">UserRepository</span> {
+    <span class="kw">suspend fun</span> <span class="fn">getUsers</span>(): <span class="cl">Result</span>&lt;<span class="cl">List</span>&lt;<span class="cl">User</span>&gt;&gt;
+    <span class="kw">fun</span> <span class="fn">observeUsers</span>(): <span class="cl">Flow</span>&lt;<span class="cl">List</span>&lt;<span class="cl">User</span>&gt;&gt;
+}
+
+<span class="cm">// data/repository/UserRepositoryImpl.kt</span>
+<span class="kw">class</span> <span class="cl">UserRepositoryImpl</span> <span class="an">@Inject</span> <span class="kw">constructor</span>(
+    <span class="kw">private val</span> remote: <span class="cl">UserRemoteSource</span>,
+    <span class="kw">private val</span> local:  <span class="cl">UserDao</span>
+) : <span class="cl">UserRepository</span> {
+
+    <span class="kw">override fun</span> <span class="fn">observeUsers</span>(): <span class="cl">Flow</span>&lt;<span class="cl">List</span>&lt;<span class="cl">User</span>&gt;&gt; =
+        local.<span class="fn">observeAll</span>()   <span class="cm">// Room Flow — auto re-emits on write</span>
+
+    <span class="kw">override suspend fun</span> <span class="fn">getUsers</span>(): <span class="cl">Result</span>&lt;<span class="cl">List</span>&lt;<span class="cl">User</span>&gt;&gt; =
+        <span class="fn">runCatching</span> {
+            <span class="kw">val</span> fresh = remote.<span class="fn">fetchUsers</span>()
+            local.<span class="fn">upsertAll</span>(fresh.<span class="fn">map</span> { it.<span class="fn">toEntity</span>() })
+            fresh.<span class="fn">map</span> { it.<span class="fn">toDomain</span>() }
+        }
+}</pre>
+      </div>
+    </div>
+
+    <div class="layer layer-ds" onclick="toggleLayer('ds')">
+      <div class="layer-dot"></div>
+      <div class="layer-name">Data Source</div>
+      <div class="layer-tech">Room · Retrofit · DataStore</div>
+      <div class="layer-arrow">›</div>
+    </div>
+    <div class="code-panel" id="panel-ds">
+      <div style="height:0.5rem; background: var(--bg);"></div>
+      <div class="desc-panel">
+        Room <strong>@Dao</strong> for local, Retrofit <strong>suspend fun</strong> for remote. DataStore for typed prefs. Entity ↔ Domain mappers live in data layer.
+      </div>
+      <div class="code-block">
+        <div class="code-header">
+          <span class="code-filename">UserDao.kt</span>
+          <button class="copy-btn" onclick="copyCode('code-ds', this)">copy</button>
+        </div>
+        <pre id="code-ds"><span class="an">@Dao</span>
+<span class="kw">interface</span> <span class="cl">UserDao</span> {
+    <span class="an">@Query</span>(<span class="str">"SELECT * FROM users ORDER BY name"</span>)
+    <span class="kw">fun</span> <span class="fn">observeAll</span>(): <span class="cl">Flow</span>&lt;<span class="cl">List</span>&lt;<span class="cl">UserEntity</span>&gt;&gt;  <span class="cm">// reactive!</span>
+
+    <span class="an">@Upsert</span>  <span class="cm">// Room 2.5+ — insert or update</span>
+    <span class="kw">suspend fun</span> <span class="fn">upsertAll</span>(users: <span class="cl">List</span>&lt;<span class="cl">UserEntity</span>&gt;)
+
+    <span class="an">@Query</span>(<span class="str">"DELETE FROM users"</span>)
+    <span class="kw">suspend fun</span> <span class="fn">clearAll</span>()
+}
+
+<span class="cm">// Retrofit remote source</span>
+<span class="kw">interface</span> <span class="cl">UserApiService</span> {
+    <span class="an">@GET</span>(<span class="str">"users"</span>)
+    <span class="kw">suspend fun</span> <span class="fn">fetchUsers</span>(): <span class="cl">List</span>&lt;<span class="cl">UserDto</span>&gt;
+}
+
+<span class="cm">// DataStore typed prefs</span>
+<span class="kw">val</span> <span class="cl">Context</span>.dataStore <span class="kw">by</span> <span class="fn">preferencesDataStore</span>(<span class="str">"settings"</span>)
+<span class="kw">val</span> THEME_KEY = <span class="fn">booleanPreferencesKey</span>(<span class="str">"dark_mode"</span>)</pre>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Data flow banner -->
+  <div class="flow-viz">
+    <span class="flow-node" style="background:rgba(78,255,176,0.1);color:var(--layer-ui)">UI</span>
+    <span class="flow-arrow">→ event →</span>
+    <span class="flow-node" style="background:rgba(110,140,255,0.1);color:var(--layer-vm)">ViewModel</span>
+    <span class="flow-arrow">→ suspend →</span>
+    <span class="flow-node" style="background:rgba(255,209,102,0.1);color:var(--layer-uc)">UseCase</span>
+    <span class="flow-arrow">→ Result →</span>
+    <span class="flow-node" style="background:rgba(255,140,66,0.1);color:var(--layer-repo)">Repository</span>
+    <span class="flow-arrow">→ suspend/Flow →</span>
+    <span class="flow-node" style="background:rgba(255,107,107,0.1);color:var(--layer-ds)">DataSource</span>
+    <span style="margin-left:auto;color:var(--muted)">// StateFlow ← back up</span>
+  </div>
+
+  <!-- Common Patterns -->
+  <div class="section-title">Common Patterns</div>
+  <div class="patterns-grid">
+
+    <div class="pattern-card" onclick="toggleCard(this)">
+      <div class="pattern-header">
+        <span class="pattern-icon">🌊</span>
+        <span class="pattern-name">Offline-First Flow</span>
+        <span class="pattern-tag tag-kotlin">Kotlin</span>
+      </div>
+      <div class="pattern-preview">flow { emit(local.get())
+  emit(remote.fetch()
+    .also { local.save(it) })
+}</div>
+      <div class="pattern-detail">
+        <div class="code-block" style="border-radius:0;border:none;border-top:1px solid var(--border)">
+          <div class="code-header">
+            <span class="code-filename">offline_first.kt</span>
+            <button class="copy-btn" onclick="event.stopPropagation();copyCode('pcode-offline',this)">copy</button>
+          </div>
+          <pre id="pcode-offline"><span class="kw">fun</span> <span class="fn">getUsersOfflineFirst</span>(): <span class="cl">Flow</span>&lt;<span class="cl">Resource</span>&lt;<span class="cl">List</span>&lt;<span class="cl">User</span>&gt;&gt;&gt; = <span class="fn">flow</span> {
+    <span class="fn">emit</span>(<span class="cl">Resource.Loading</span>)
+    <span class="cm">// 1. emit cached first (instant)</span>
+    <span class="kw">val</span> cached = local.<span class="fn">getUsers</span>()
+    <span class="kw">if</span> (cached.<span class="fn">isNotEmpty</span>()) <span class="fn">emit</span>(<span class="cl">Resource.Success</span>(cached))
+
+    <span class="cm">// 2. fetch fresh</span>
+    <span class="fn">runCatching</span> { remote.<span class="fn">fetchUsers</span>() }
+        .<span class="fn">onSuccess</span> {
+            local.<span class="fn">upsertAll</span>(it)
+            <span class="fn">emit</span>(<span class="cl">Resource.Success</span>(it))
+        }
+        .<span class="fn">onFailure</span> {
+            <span class="cm">// already emitted cache — just flag error</span>
+            <span class="fn">emit</span>(<span class="cl">Resource.Error</span>(it, cached))
+        }
+}</pre>
+        </div>
+      </div>
+    </div>
+
+    <div class="pattern-card" onclick="toggleCard(this)">
+      <div class="pattern-header">
+        <span class="pattern-icon">⚡</span>
+        <span class="pattern-name">Parallel Coroutines</span>
+        <span class="pattern-tag tag-kotlin">Kotlin</span>
+      </div>
+      <div class="pattern-preview">val (a, b) = awaitAll(
+  async { repoA.get() },
+  async { repoB.get() }
+)</div>
+      <div class="pattern-detail">
+        <div class="code-block" style="border-radius:0;border:none;border-top:1px solid var(--border)">
+          <div class="code-header">
+            <span class="code-filename">parallel.kt</span>
+            <button class="copy-btn" onclick="event.stopPropagation();copyCode('pcode-parallel',this)">copy</button>
+          </div>
+          <pre id="pcode-parallel"><span class="kw">suspend fun</span> <span class="fn">loadDashboard</span>(): <span class="cl">DashboardData</span> =
+    coroutineScope {
+        <span class="kw">val</span> usersDeferred  = <span class="fn">async</span> { userRepo.<span class="fn">getUsers</span>() }
+        <span class="kw">val</span> statsDeferred  = <span class="fn">async</span> { statsRepo.<span class="fn">getStats</span>() }
+        <span class="kw">val</span> configDeferred = <span class="fn">async</span> { configRepo.<span class="fn">getConfig</span>() }
+
+        <span class="cm">// All three run in parallel, coroutineScope</span>
+        <span class="cm">// cancels all if any throws</span>
+        <span class="cl">DashboardData</span>(
+            users  = usersDeferred.<span class="fn">await</span>().<span class="fn">getOrThrow</span>(),
+            stats  = statsDeferred.<span class="fn">await</span>().<span class="fn">getOrThrow</span>(),
+            config = configDeferred.<span class="fn">await</span>().<span class="fn">getOrThrow</span>()
+        )
+    }</pre>
+        </div>
+      </div>
+    </div>
+
+    <div class="pattern-card" onclick="toggleCard(this)">
+      <div class="pattern-header">
+        <span class="pattern-icon">📦</span>
+        <span class="pattern-name">Flutter BLoC ↔ Android</span>
+        <span class="pattern-tag tag-flutter">Flutter</span>
+      </div>
+      <div class="pattern-preview">// BLoC ≈ ViewModel + sealed events
+// Stream&lt;State&gt; ≈ StateFlow&lt;UiState&gt;
+// emit() ≈ _state.emit()</div>
+      <div class="pattern-detail">
+        <div class="code-block" style="border-radius:0;border:none;border-top:1px solid var(--border)">
+          <div class="code-header">
+            <span class="code-filename">user_bloc.dart</span>
+            <button class="copy-btn" onclick="event.stopPropagation();copyCode('pcode-bloc',this)">copy</button>
+          </div>
+          <pre id="pcode-bloc"><span class="cm">// Think: class UserViewModel : ViewModel()</span>
+<span class="kw">class</span> <span class="cl">UserBloc</span> <span class="kw">extends</span> <span class="cl">Bloc</span>&lt;<span class="cl">UserEvent</span>, <span class="cl">UserState</span>&gt; {
+  <span class="kw">final</span> <span class="cl">UserRepository</span> _repo;
+
+  <span class="cl">UserBloc</span>(<span class="kw">this</span>._repo) : <span class="kw">super</span>(<span class="cl">UserLoading</span>()) {
+    <span class="cm">// on&lt;E&gt; ≈ viewModelScope.launch + when(event)</span>
+    <span class="fn">on</span>&lt;<span class="cl">LoadUsers</span>&gt;((event, emit) <span class="kw">async</span> {
+      <span class="kw">try</span> {
+        <span class="kw">final</span> users = <span class="kw">await</span> _repo.<span class="fn">getUsers</span>();
+        <span class="fn">emit</span>(<span class="cl">UserLoaded</span>(users));   <span class="cm">// ≈ _state.emit(Success)</span>
+      } <span class="kw">catch</span> (e) {
+        <span class="fn">emit</span>(<span class="cl">UserError</span>(e.toString()));
+      }
+    });
+  }
+}</pre>
+        </div>
+      </div>
+    </div>
+
+    <div class="pattern-card" onclick="toggleCard(this)">
+      <div class="pattern-header">
+        <span class="pattern-icon">🤖</span>
+        <span class="pattern-name">Streaming LLM in Android</span>
+        <span class="pattern-tag tag-ml">AI/ML</span>
+      </div>
+      <div class="pattern-preview">// SSE → Flow&lt;String&gt; → StateFlow
+// Collect chunk-by-chunk in Compose</div>
+      <div class="pattern-detail">
+        <div class="code-block" style="border-radius:0;border:none;border-top:1px solid var(--border)">
+          <div class="code-header">
+            <span class="code-filename">LlmRepository.kt</span>
+            <button class="copy-btn" onclick="event.stopPropagation();copyCode('pcode-llm',this)">copy</button>
+          </div>
+          <pre id="pcode-llm"><span class="cm">// OkHttp SSE → callbackFlow → Flow&lt;String&gt;</span>
+<span class="kw">fun</span> <span class="fn">streamCompletion</span>(prompt: <span class="cl">String</span>): <span class="cl">Flow</span>&lt;<span class="cl">String</span>&gt; = <span class="fn">callbackFlow</span> {
+    <span class="kw">val</span> request = <span class="cl">Request.Builder</span>()
+        .<span class="fn">url</span>(<span class="str">"https://api.anthropic.com/v1/messages"</span>)
+        .<span class="fn">post</span>(<span class="fn">buildBody</span>(prompt))
+        .<span class="fn">build</span>()
+
+    <span class="kw">val</span> listener = <span class="kw">object</span> : <span class="cl">EventSourceListener</span>() {
+        <span class="kw">override fun</span> <span class="fn">onEvent</span>(es, id, type, data) {
+            <span class="kw">if</span> (data != <span class="str">"[DONE]"</span>) {
+                <span class="fn">trySend</span>(<span class="fn">parseChunk</span>(data))  <span class="cm">// non-blocking</span>
+            }
+        }
+        <span class="kw">override fun</span> <span class="fn">onClosed</span>(es) = <span class="fn">close</span>()
+        <span class="kw">override fun</span> <span class="fn">onFailure</span>(es, t, r) = <span class="fn">close</span>(t)
+    }
+    <span class="kw">val</span> es = <span class="cl">EventSources</span>.<span class="fn">createFactory</span>(okHttp)
+        .<span class="fn">newEventSource</span>(request, listener)
+
+    <span class="fn">awaitClose</span> { es.<span class="fn">cancel</span>() }
+}
+
+<span class="cm">// ViewModel — accumulate chunks into StateFlow</span>
+<span class="kw">fun</span> <span class="fn">chat</span>(prompt: <span class="cl">String</span>) {
+    viewModelScope.<span class="fn">launch</span> {
+        <span class="kw">val</span> buffer = <span class="cl">StringBuilder</span>()
+        repo.<span class="fn">streamCompletion</span>(prompt).<span class="fn">collect</span> { chunk ->
+            buffer.<span class="fn">append</span>(chunk)
+            _uiState.<span class="fn">emit</span>(<span class="cl">UiState.Streaming</span>(buffer.<span class="fn">toString</span>()))
+        }
+        _uiState.<span class="fn">emit</span>(<span class="cl">UiState.Done</span>(buffer.<span class="fn">toString</span>()))
+    }
+}</pre>
+        </div>
+      </div>
+    </div>
+
+    <div class="pattern-card" onclick="toggleCard(this)">
+      <div class="pattern-header">
+        <span class="pattern-icon">🧪</span>
+        <span class="pattern-name">ViewModel Unit Test</span>
+        <span class="pattern-tag tag-kotlin">Kotlin</span>
+      </div>
+      <div class="pattern-preview">// turbine for Flow testing
+// No Robolectric needed</div>
+      <div class="pattern-detail">
+        <div class="code-block" style="border-radius:0;border:none;border-top:1px solid var(--border)">
+          <div class="code-header">
+            <span class="code-filename">HomeViewModelTest.kt</span>
+            <button class="copy-btn" onclick="event.stopPropagation();copyCode('pcode-test',this)">copy</button>
+          </div>
+          <pre id="pcode-test"><span class="an">@OptIn(ExperimentalCoroutinesApi::class)</span>
+<span class="kw">class</span> <span class="cl">HomeViewModelTest</span> {
+    <span class="an">@get:Rule</span> <span class="kw">val</span> mainDispatcherRule = <span class="cl">MainDispatcherRule</span>()
+
+    <span class="kw">private val</span> useCase = <span class="fn">mockk</span>&lt;<span class="cl">GetUsersUseCase</span>&gt;()
+    <span class="kw">private lateinit var</span> vm: <span class="cl">HomeViewModel</span>
+
+    <span class="an">@Before</span> <span class="kw">fun</span> <span class="fn">setup</span>() { vm = <span class="cl">HomeViewModel</span>(useCase) }
+
+    <span class="an">@Test</span>
+    <span class="kw">fun</span> `<span class="fn">emits success when use case returns data</span>`() = <span class="fn">runTest</span> {
+        <span class="kw">val</span> users = <span class="fn">listOf</span>(<span class="cl">User</span>(<span class="str">"1"</span>, <span class="str">"Ada"</span>))
+        <span class="fn">coEvery</span> { useCase() } <span class="fn">returns</span> <span class="cl">Result.success</span>(users)
+
+        vm.uiState.<span class="fn">test</span> {          <span class="cm">// turbine</span>
+            <span class="fn">skipItems</span>(<span class="num">1</span>)           <span class="cm">// skip Loading</span>
+            <span class="kw">val</span> state = <span class="fn">awaitItem</span>()
+            <span class="fn">assertIs</span>&lt;<span class="cl">UiState.Success</span>&gt;(state)
+            <span class="fn">assertEquals</span>(users, state.data)
+        }
+    }
+}</pre>
+        </div>
+      </div>
+    </div>
+
+    <div class="pattern-card" onclick="toggleCard(this)">
+      <div class="pattern-header">
+        <span class="pattern-icon">📱</span>
+        <span class="pattern-name">ML Kit On-Device</span>
+        <span class="pattern-tag tag-ml">AI/ML</span>
+      </div>
+      <div class="pattern-preview">// No network, no latency
+// Text / image / translate</div>
+      <div class="pattern-detail">
+        <div class="code-block" style="border-radius:0;border:none;border-top:1px solid var(--border)">
+          <div class="code-header">
+            <span class="code-filename">MlKitRepository.kt</span>
+            <button class="copy-btn" onclick="event.stopPropagation();copyCode('pcode-mlkit',this)">copy</button>
+          </div>
+          <pre id="pcode-mlkit"><span class="cm">// ML Kit — no network needed, < 5ms latency</span>
+<span class="kw">class</span> <span class="cl">SentimentRepository</span> <span class="an">@Inject</span> <span class="kw">constructor</span>() {
+
+    <span class="kw">private val</span> analyzer = <span class="cl">EntityExtraction</span>
+        .<span class="fn">getClient</span>(<span class="cl">EntityExtractorOptions.Builder</span>(<span class="cl">ENGLISH</span>).<span class="fn">build</span>())
+
+    <span class="kw">suspend fun</span> <span class="fn">extractEntities</span>(text: <span class="cl">String</span>) =
+        <span class="fn">suspendCancellableCoroutine</span>&lt;<span class="cl">List</span>&lt;<span class="cl">EntityAnnotation</span>&gt;&gt; { cont ->
+            analyzer.<span class="fn">annotate</span>(<span class="cl">EntityExtractionParams.Builder</span>(text).<span class="fn">build</span>())
+                .<span class="fn">addOnSuccessListener</span> { cont.<span class="fn">resume</span>(it) }
+                .<span class="fn">addOnFailureListener</span>  { cont.<span class="fn">resumeWithException</span>(it) }
+        }
+
+    <span class="cm">// TFLite — bring your own model</span>
+    <span class="kw">private val</span> interpreter = <span class="cl">Interpreter</span>(
+        <span class="fn">loadModelFile</span>(assets, <span class="str">"model.tflite"</span>)
+    )
+    <span class="kw">fun</span> <span class="fn">runInference</span>(input: <span class="cl">FloatArray</span>): <span class="cl">FloatArray</span> {
+        <span class="kw">val</span> output = <span class="cl">Array</span>(<span class="num">1</span>) { <span class="cl">FloatArray</span>(<span class="num">10</span>) }
+        interpreter.<span class="fn">run</span>(arrayOf(input), output)
+        <span class="kw">return</span> output[<span class="num">0</span>]
+    }
+}</pre>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <footer>
+    <span>// Clean Architecture · MVVM · Kotlin Coroutines · Room · Jetpack Compose</span>
+    <span>click layers or cards to expand ↑</span>
+  </footer>
+
+</div>
+
+<script>
+  const openPanels = new Set();
+
+  function toggleLayer(id) {
+    const panel = document.getElementById('panel-' + id);
+    const layers = document.querySelectorAll('.layer');
+    const target = [...layers].find(l => l.getAttribute('onclick')?.includes(`'${id}'`));
+
+    if (openPanels.has(id)) {
+      panel.classList.remove('visible');
+      target?.classList.remove('active');
+      openPanels.delete(id);
+    } else {
+      panel.classList.add('visible');
+      target?.classList.add('active');
+      openPanels.add(id);
+    }
+  }
+
+  function toggleCard(card) {
+    const detail = card.querySelector('.pattern-detail');
+    const isOpen = detail.classList.contains('open');
+    // close others
+    document.querySelectorAll('.pattern-detail.open').forEach(d => d.classList.remove('open'));
+    if (!isOpen) detail.classList.add('open');
+  }
+
+  function copyCode(id, btn) {
+    const el = document.getElementById(id);
+    const text = el.innerText;
+    navigator.clipboard.writeText(text).then(() => {
+      btn.textContent = 'copied ✓';
+      btn.classList.add('copied');
+      setTimeout(() => { btn.textContent = 'copy'; btn.classList.remove('copied'); }, 1800);
+    });
+  }
+</script>
+</body>
+</html>
